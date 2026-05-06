@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import SearchInput from './SearchInput';
