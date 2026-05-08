@@ -6,13 +6,12 @@ import {
   Controls,
   MarkerType,
   MiniMap,
-  type Edge,
-  type Node,
   Position,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
 } from "reactflow";
+import type { Edge, Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { GitBranchPlus } from "lucide-react";
 import type { TransactionCallGraph } from "@/utils/transactionGraph";
