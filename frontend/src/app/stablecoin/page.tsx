@@ -5,13 +5,58 @@ import { ChevronRight, DollarSign } from "lucide-react";
 import Link from "next/link";
 import StablecoinDashboard from "../../components/StablecoinDashboard";
 
+interface StablecoinMetrics {
+  totalSupply: string;
+  totalReserve: string;
+  collateralizationRatio: number;
+  currentPrice: number;
+  targetPrice: number;
+  priceDeviation: number;
+  lastRebase: string;
+  rebaseCount: number;
+  holders: number;
+  volume24h: string;
+  marketCap: string;
+}
+
+interface PricePoint {
+  price: number;
+  target_price: number;
+  timestamp: string;
+}
+
+interface RebaseEvent {
+  old_supply: string;
+  new_supply: string;
+  price: number;
+  timestamp: string;
+}
+
+interface ReserveInfo {
+  totalReserve: string;
+  targetReserve: string;
+  reserveRatio: number;
+  assets: Array<{ asset: string; amount: string; value: string }>;
+  lastUpdated: string;
+}
+
+interface ContractStatus {
+  initialized: boolean;
+  paused: boolean;
+  contractId: string;
+  targetPrice: string;
+  rebaseCooldown: number;
+  lastRebase: string;
+  nextRebase: string;
+}
+
 export default function StablecoinPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [metrics, setMetrics] = useState(null);
-  const [priceHistory, setPriceHistory] = useState(null);
-  const [rebaseHistory, setRebaseHistory] = useState(null);
-  const [reserveInfo, setReserveInfo] = useState(null);
-  const [contractStatus, setContractStatus] = useState(null);
+  const [metrics, setMetrics] = useState<StablecoinMetrics | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PricePoint[] | null>(null);
+  const [rebaseHistory, setRebaseHistory] = useState<RebaseEvent[] | null>(null);
+  const [reserveInfo, setReserveInfo] = useState<ReserveInfo | null>(null);
+  const [contractStatus, setContractStatus] = useState<ContractStatus | null>(null);
 
   useEffect(() => {
     // Fetch data from API
