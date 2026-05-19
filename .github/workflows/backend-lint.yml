@@ -30,6 +30,6 @@ jobs:
       - name: Run linting and formatting check
         working-directory: backend
         run: |
-          npm install --no-package-lock --no-save eslint prettier
-          npx eslint src/
-          npx prettier --check src/
+          npm ci --no-audit --no-fund
+          npm run lint:check
+          npm run format:check
