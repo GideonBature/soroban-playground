@@ -28,8 +28,7 @@ jobs:
         run: node scripts/check-license.js
 
       - name: Run linting and formatting check
-        working-directory: backend
         run: |
           npm ci --no-audit --no-fund
-          npm run lint:check
-          npm run format:check
+          npm run lint:check --workspace=backend
+          npm run format:check --workspace=backend
