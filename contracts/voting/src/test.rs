@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use super::{types::Error, VotingContract, VotingContractClient};
+use super::storage::set_count;
 use soroban_sdk::{symbol_short, testutils::Address as _, vec, Address, Env, Symbol, Vec};
 
 fn setup() -> (Env, VotingContractClient<'static>, Address, Vec<Symbol>) {
