@@ -33,7 +33,8 @@ import {
   Zap,
   ChevronDown,
   LayoutGrid,
-  Search
+  Search,
+  Library
 } from "lucide-react";
 
 type NavItem = {
@@ -70,6 +71,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
         { name: "Docs & Reference", href: "/docs", icon: BookOpen },
         { name: "Audit Explorer", href: "/audit", icon: Shield },
         { name: "Search Utility", href: "/search", icon: Search },
+        { name: "Template Library", href: "/template-library", icon: Library },
         { name: "Ledger Migration", href: "/migration", icon: Send },
         { name: "Rate Limits", href: "/rate-limits", icon: Sliders }
       ]
