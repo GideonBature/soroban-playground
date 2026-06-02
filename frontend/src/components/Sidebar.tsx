@@ -67,6 +67,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
       items: [
         { name: "IDE Playground", href: "/playground", icon: Code2 },
         { name: "Compile Dashboard", href: "/compile-dashboard", icon: Zap },
+        { name: "Template Library", href: "/template-library", icon: LayoutGrid },
         { name: "Docs & Reference", href: "/docs", icon: BookOpen },
         { name: "Audit Explorer", href: "/audit", icon: Shield },
         { name: "Search Utility", href: "/search", icon: Search },
