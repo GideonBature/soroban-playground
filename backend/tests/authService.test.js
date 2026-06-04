@@ -6,10 +6,6 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 let testDb = null;
 
@@ -23,7 +19,7 @@ jest.unstable_mockModule('../src/database/connection.js', () => ({
     });
 
     // Read and execute database schema on the in-memory instance
-    const schemaPath = path.resolve(__dirname, '../src/database/schema.sql');
+    const schemaPath = path.resolve(process.cwd(), 'src/database/schema.sql');
     const schema = await fs.readFile(schemaPath, 'utf-8');
     await testDb.exec(schema);
 

@@ -1,4 +1,5 @@
 import warrantyRoutes from './warranty.js';
+import favoritesRoutes from './favorites.js';
 import express from 'express';
 import v1Compile from './v1/compile.js';
 import v1Deploy from './v1/deploy.js';
@@ -75,8 +76,5 @@ import musicLicensingRoutes from './musicLicensingRoutes.js';
 router.use('/music-licensing', musicLicensingRoutes);
 
 router.use('/warranty', warrantyRoutes);
-
-import storageRoutes from './storage.js';
-router.use('/storage', storageRoutes);
-
+router.use('/favorites', favoritesRoutes);
 export default router;

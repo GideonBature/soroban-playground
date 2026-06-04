@@ -209,3 +209,12 @@ CREATE TABLE IF NOT EXISTS treasury_history (
     data TEXT NOT NULL, -- JSON event data
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- User favorites for template library sync
+CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    favorites TEXT NOT NULL DEFAULT '[]', -- JSON array of template IDs
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(wallet_address)
+);
