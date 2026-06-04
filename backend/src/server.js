@@ -27,7 +27,7 @@ import migrationRoute from './routes/migration.js';
 import sportsPredictionMarketRoute from './routes/sportsPredictionMarket.js';
 import tokenizedReitRoute from './routes/tokenizedReit.js';
 import treasuryRoute from './routes/treasury.js';
-import priceAggregatorRoute from './routes/priceAggregator.js';
+import templatesRoute from './routes/templates.js';
 import { initializeDatabase } from './database/connection.js';
 import { setupGraphQL } from './graphql/index.js';
 
@@ -92,7 +92,7 @@ app.use('/api/migrations', migrationRoute);
 app.use('/api/sports-markets', sportsPredictionMarketRoute);
 app.use('/api/reit', tokenizedReitRoute);
 app.use('/api/treasury', treasuryRoute);
-app.use('/api/price-aggregator', priceAggregatorRoute);
+app.use('/api/templates', templatesRoute);
 app.use('/metrics', metricsRoute);
 
 // GraphQL Endpoint
