@@ -4,6 +4,7 @@ import { Landmark, TrendingUp, Wallet, ArrowUpCircle, ArrowDownCircle } from 'lu
 export default function LendingDashboard() {
     const [deposited, setDeposited] = useState(1000);
     const [borrowed, setBorrowed] = useState(400);
+    const [creditScore, setCreditScore] = useState(785);
 
     const healthFactor = (deposited / (borrowed || 1) * 0.67).toFixed(2);
     const healthColor = Number(healthFactor) > 1.5 ? 'text-green-500' : Number(healthFactor) > 1.1 ? 'text-yellow-500' : 'text-red-500';

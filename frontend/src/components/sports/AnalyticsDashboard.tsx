@@ -2,7 +2,14 @@
 
 import React from 'react';
 
-export default function AnalyticsDashboard({ analytics }) {
+interface Analytics {
+    total_volume_usdc: number;
+    active_bets: number;
+    avg_bet_size: number;
+    recent_activity: Array<{ outcome: string; time: string; amount: number }>;
+}
+
+export default function AnalyticsDashboard({ analytics }: { analytics: Analytics | undefined | null }) {
     if (!analytics) return null;
 
     return (

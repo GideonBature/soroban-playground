@@ -148,21 +148,21 @@ const TradingInterface: React.FC<TradingInterfaceProps> = ({
         <div className="trading-calcs">
           <div className="calc-item">
             <label>Current Price</label>
-            <value>${currentPrice ? (currentPrice / 100000000).toFixed(8) : '—'}</value>
+            <span>${currentPrice ? (currentPrice / 100000000).toFixed(8) : '—'}</span>
           </div>
           <div className="calc-item">
             <label>Notional Value</label>
-            <value>${(notionalValue / 100).toFixed(2)}</value>
+            <span>${(notionalValue / 100).toFixed(2)}</span>
           </div>
           <div className="calc-item">
             <label>Trading Fee (1%)</label>
-            <value>${(fee / 100).toFixed(2)}</value>
+            <span>${(fee / 100).toFixed(2)}</span>
           </div>
           <div className="calc-item">
             <label>Liquidation Price</label>
-            <value className={direction === 'Long' ? 'danger' : 'success'}>
+            <span className={direction === 'Long' ? 'danger' : 'success'}>
               ${liquidationPrice ? (liquidationPrice / 100000000).toFixed(8) : '—'}
-            </value>
+            </span>
           </div>
         </div>
 
@@ -171,8 +171,8 @@ const TradingInterface: React.FC<TradingInterfaceProps> = ({
           <strong>⚠️ Risk Warning:</strong>
           <p>
             {direction === 'Long'
-              ? `Your position will be liquidated if ${assetSymbol} falls below $${liquidationPrice ? (liquidationPrice / 100000000).toFixed(8) : '—'}`
-              : `Your position will be liquidated if ${assetSymbol} rises above $${liquidationPrice ? (liquidationPrice / 100000000).toFixed(8) : '—'}`}
+              ? `Your position will be liquidated if ${assetSymbol} falls below $${liquidationPrice ? (liquidationPrice / 100000000).toFixed(8) : '&apos;&mdash;&apos;'}`
+              : `Your position will be liquidated if ${assetSymbol} rises above $${liquidationPrice ? (liquidationPrice / 100000000).toFixed(8) : '&apos;&mdash;&apos;'}`}
           </p>
         </div>
 
@@ -199,7 +199,7 @@ const TradingInterface: React.FC<TradingInterfaceProps> = ({
         <div className="info-item">
           <strong>Liquidation</strong>
           <p>
-            If your position's losses exceed your margin, it will be automatically liquidated
+            If your positions losses exceed your margin, it will be automatically liquidated
             to prevent further losses.
           </p>
         </div>

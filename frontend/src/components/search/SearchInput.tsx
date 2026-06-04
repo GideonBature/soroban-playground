@@ -30,7 +30,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
   
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load popular searches on mount
   useEffect(() => {

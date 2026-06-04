@@ -1,5 +1,5 @@
-import WarrantyPanel from '@/components/WarrantyPanel';
 "use client";
+import WarrantyPanel from '@/components/WarrantyPanel';
 
 import {
   startTransition,
@@ -615,24 +615,28 @@ export default function Home() {
     const canRelay = healthState === "online" && isValidContractId(contractId);
 
     setIsSubmitting(true);
-    pushTransaction({
-      id: txId,
-      title: options.title,
-      status: wallet.address ? "awaiting_wallet" : "queued",
-      detail: wallet.address
-        ? `Wallet ${shortAddress(wallet.address)} ready`
-        : "Running in local simulation mode",
-      createdAt: currentIsoTime(),
-    });
+    useEffect(() => {
+      pushTransaction({
+        id: txId,
+        title: options.title,
+        status: wallet.address ? "awaiting_wallet" : "queued",
+        detail: wallet.address
+          ? `Wallet ${shortAddress(wallet.address)} ready`
+          : "Running in local simulation mode",
+        createdAt: currentIsoTime(),
+      });
+    }, [txId, wallet.address]);
 
     try {
       await wait(250);
-      updateTransaction(txId, {
-        status: "submitted",
-        detail: canRelay
-          ? `Invoking ${options.functionName} on ${shortAddress(contractId)}`
-          : "Applying state locally without backend relay",
-      });
+      useEffect(() => {
+        updateTransaction(txId, {
+          status: "submitted",
+          detail: canRelay
+            ? `Invoking ${options.functionName} on ${shortAddress(contractId)} `
+            : "Applying state locally without backend relay",
+        });
+      }, [txId, canRelay, contractId]);
 
       let output = "Simulated";
       if (canRelay) {
@@ -647,30 +651,36 @@ export default function Home() {
       }
 
       options.onSuccess();
-      updateTransaction(txId, {
-        status: "confirmed",
-        detail: options.successDetail,
-        hash: buildTxHash(),
-        output,
-      });
+      useEffect(() => {
+        updateTransaction(txId, {
+          status: "confirmed",
+          detail: options.successDetail,
+          hash: buildTxHash(),
+          output,
+        });
+      }, [txId, options.successDetail, output]);
     } catch (error) {
-      updateTransaction(txId, {
-        status: "failed",
-        detail: formatApiError(error),
-      });
+      useEffect(() => {
+        updateTransaction(txId, {
+          status: "failed",
+          detail: formatApiError(error),
+        });
+      }, [txId, error]);
     } finally {
       setIsSubmitting(false);
     }
   }
 
   function failFast(title: string, detail: string) {
-    pushTransaction({
-      id: crypto.randomUUID(),
-      title,
-      status: "failed",
-      detail,
-      createdAt: currentIsoTime(),
-    });
+    useEffect(() => {
+      pushTransaction({
+        id: crypto.randomUUID(),
+        title,
+        status: "failed",
+        detail,
+        createdAt: currentIsoTime(),
+      });
+    }, [title, detail]);
   }
 
   async function handleRegisterAsset() {
@@ -916,667 +926,669 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-5 text-slate-100 sm:px-6 lg:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1600px] flex-col overflow-hidden rounded-[30px] border border-white/10 bg-slate-950/70 shadow-[0_32px_120px_rgba(5,10,24,0.8)] backdrop-blur">
-        <header className="border-b border-white/10 px-6 py-6">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-4xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-amber-100">
-                <Waves size={12} />
-                Synthetic Assets Command Deck
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                Track prices, manage collateral, and stage synthetic trades from one desk.
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                This screen is wired for the synthetic-assets contract flow: oracle marks,
-                collateralized minting, leveraged positions, Freighter connection, and a
-                transaction timeline that can relay through the existing backend routes or
-                keep running locally in simulation mode.
-              </p>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 text-[#e6edf7]">
+      <header className="px-2 py-4">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-4xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-amber-100">
+              <Waves size={12} />
+              Synthetic Assets Command Deck
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[480px]">
-              <StatusCard
-                label="Backend"
-                value={DEFAULT_API_BASE_URL}
-                tone={
-                  healthState === "online"
-                    ? "text-emerald-300"
-                    : healthState === "offline"
-                      ? "text-rose-300"
-                      : "text-amber-300"
-                }
-                icon={
-                  healthState === "checking" ? (
-                    <LoaderCircle size={14} className="animate-spin" />
-                  ) : (
-                    <RadioTower size={14} />
-                  )
-                }
-                helper={healthMessage}
-              />
-              <StatusCard
-                label="Contract Route"
-                value={contractId || "Contract ID not provided"}
-                tone={
-                  routeMode === "Backend relay"
-                    ? "text-cyan-300"
-                    : "text-amber-200"
-                }
-                icon={<Signature size={14} />}
-                helper={`${routeMode} - ${wallet.address ? shortAddress(wallet.address) : "demo account active"}`}
-              />
-            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              Track prices, manage collateral, and stage synthetic trades from one desk.
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+              This screen is wired for the synthetic-assets contract flow: oracle marks,
+              collateralized minting, leveraged positions, Freighter connection, and a
+              transaction timeline that can relay through the existing backend routes or
+              keep running locally in simulation mode.
+            </p>
           </div>
-        </header>
 
-        <main className="grid flex-1 gap-0 xl:grid-cols-[minmax(0,1.1fr)_420px]">
-          <section className="space-y-5 border-b border-white/10 p-5 xl:border-b-0 xl:border-r">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                label="Total Collateral"
-                value={formatUsd(totalCollateral)}
-                helper="Stable collateral parked across open mint positions"
-                icon={<Shield size={18} />}
-              />
-              <MetricCard
-                label="Minted Exposure"
-                value={formatUsd(mintedExposure)}
-                helper="Marked to current oracle prices"
-                icon={<Coins size={18} />}
-              />
-              <MetricCard
-                label="Open Interest"
-                value={formatUsd(openInterest)}
-                helper="Gross notional across open trades"
-                icon={<TrendingUp size={18} />}
-              />
-              <MetricCard
-                label="Protocol Supply"
-                value={formatUsd(totalSupplyValue)}
-                helper="Aggregate value of all registered synth supply"
-                icon={<BadgeDollarSign size={18} />}
-              />
-            </div>
-
-            <Panel
-              title="Live Markets"
-              eyebrow="Oracle tape"
-              action={
-                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100">
-                  Refreshes every 4.5s
-                </span>
+          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[480px]">
+            <StatusCard
+              label="Backend Status"
+              value={DEFAULT_API_BASE_URL}
+              tone={
+                healthState === "online"
+                  ? "text-emerald-300"
+                  : healthState === "offline"
+                    ? "text-rose-300"
+                    : "text-amber-300"
               }
-            >
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {assets.map((asset) => {
-                  const points = buildSparklinePoints(asset.sparkline);
-                  const positive = asset.change24h >= 0;
-
-                  return (
-                    <div
-                      key={asset.symbol}
-                      className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4 shadow-[0_12px_40px_rgba(15,23,42,0.22)]"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                            {asset.name}
-                          </p>
-                          <h3 className="mt-2 text-2xl font-semibold text-white">
-                            {asset.symbol}
-                          </h3>
-                        </div>
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
-                            positive
-                              ? "bg-emerald-400/10 text-emerald-200"
-                              : "bg-rose-400/10 text-rose-200"
-                          }`}
-                        >
-                          {positive ? (
-                            <ArrowUpRight size={14} />
-                          ) : (
-                            <ArrowDownRight size={14} />
-                          )}
-                          {formatPercent(asset.change24h)}
-                        </span>
-                      </div>
-
-                      <div className="mt-4 flex items-end justify-between">
-                        <div>
-                          <p className="text-3xl font-semibold text-white">
-                            {formatUsd(asset.price)}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-400">
-                            Confidence {asset.confidence}%
-                          </p>
-                        </div>
-                        <div className="text-right text-xs text-slate-400">
-                          <p>Supply {formatAmount(asset.totalSupply, 0)}</p>
-                          <p>Volume {formatUsd(asset.volume24h)}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 overflow-hidden rounded-2xl border border-white/6 bg-slate-950/70 p-2">
-                        <svg viewBox="0 0 160 62" className="h-20 w-full">
-                          <defs>
-                            <linearGradient
-                              id={`gradient-${asset.symbol}`}
-                              x1="0%"
-                              y1="0%"
-                              x2="100%"
-                              y2="0%"
-                            >
-                              <stop offset="0%" stopColor="#f59e0b" />
-                              <stop offset="100%" stopColor="#22d3ee" />
-                            </linearGradient>
-                          </defs>
-                          <polyline
-                            fill="none"
-                            stroke={`url(#gradient-${asset.symbol})`}
-                            strokeWidth="3"
-                            points={points}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Panel>
-
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <Panel title="Collateral Positions" eyebrow="Health monitor">
-                <div className="space-y-3">
-                  {filteredPositions.length === 0 ? (
-                    <EmptyState label="No collateral positions yet." />
-                  ) : (
-                    filteredPositions.map((position) => {
-                      const asset = assetFor(assets, position.assetSymbol);
-                      const ratio = collateralRatio(position, asset);
-                      const liquidatable = ratio <= LIQUIDATION_THRESHOLD;
-
-                      return (
-                        <div
-                          key={position.id}
-                          className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-white">
-                                Position #{position.id} - {position.assetSymbol}
-                              </p>
-                              <p className="text-xs text-slate-400">
-                                {formatUsd(position.collateral)} collateral for{" "}
-                                {formatAmount(position.minted)} minted
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                                liquidatable
-                                  ? "bg-rose-400/10 text-rose-200"
-                                  : ratio < MIN_COLLATERAL_RATIO + 20
-                                    ? "bg-amber-300/10 text-amber-100"
-                                    : "bg-emerald-400/10 text-emerald-200"
-                              }`}
-                            >
-                              {liquidatable ? "Liquidatable" : "Healthy"}
-                            </span>
-                          </div>
-
-                          <div className="mt-4">
-                            <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
-                              <span>Collateral ratio</span>
-                              <span>{ratio.toFixed(1)}%</span>
-                            </div>
-                            <div className="h-2 rounded-full bg-slate-900">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  liquidatable
-                                    ? "bg-rose-400"
-                                    : ratio < MIN_COLLATERAL_RATIO + 20
-                                      ? "bg-amber-300"
-                                      : "bg-emerald-400"
-                                }`}
-                                style={{ width: `${clamp(ratio / 2, 8, 100)}%` }}
-                              />
-                            </div>
-                            <div className="mt-2 flex justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                              <span>Liquidation {LIQUIDATION_THRESHOLD}%</span>
-                              <span>Minimum {MIN_COLLATERAL_RATIO}%</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </Panel>
-
-              <Panel title="Trading Book" eyebrow="PnL monitor">
-                <div className="space-y-3">
-                  {filteredTrades.length === 0 ? (
-                    <EmptyState label="No open trades yet." />
-                  ) : (
-                    filteredTrades.map((trade) => {
-                      const asset = assetFor(assets, trade.assetSymbol);
-                      const pnl = tradePnl(trade, asset);
-                      const liquidationPrice = tradeLiquidationPrice(trade);
-                      const underwater = trade.margin + pnl <= 0;
-
-                      return (
-                        <div
-                          key={trade.id}
-                          className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-white">
-                                {trade.direction} {trade.assetSymbol} #{trade.id}
-                              </p>
-                              <p className="text-xs text-slate-400">
-                                {trade.leverage.toFixed(1)}x leverage with {formatUsd(trade.margin)} margin
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                                pnl >= 0
-                                  ? "bg-emerald-400/10 text-emerald-200"
-                                  : "bg-rose-400/10 text-rose-200"
-                              }`}
-                            >
-                              {pnl >= 0 ? "+" : ""}
-                              {formatUsd(pnl)}
-                            </span>
-                          </div>
-
-                          <div className="mt-4 grid gap-3 text-xs text-slate-300 sm:grid-cols-3">
-                            <StatCell label="Entry" value={formatUsd(trade.entryPrice)} />
-                            <StatCell label="Mark" value={formatUsd(asset?.price || 0)} />
-                            <StatCell
-                              label="Liq. Price"
-                              value={formatUsd(liquidationPrice)}
-                            />
-                          </div>
-
-                          {underwater ? (
-                            <p className="mt-3 flex items-center gap-2 text-xs text-rose-200">
-                              <AlertTriangle size={14} />
-                              Margin exhausted. Close or recapitalize this trade.
-                            </p>
-                          ) : (
-                            <p className="mt-3 text-xs text-slate-400">
-                              Gross notional {formatUsd(tradeNotional(trade))} across the current mark.
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </Panel>
-            </div>
-          </section>
-
-          <aside className="flex flex-col gap-5 bg-slate-950/55 p-5">
-            <Panel
-              title="Wallet and Routing"
-              eyebrow="Freighter"
-              action={
-                <button
-                  type="button"
-                  onClick={() => void loadWalletState(true)}
-                  disabled={wallet.isLoading}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-cyan-400/40 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {wallet.isLoading ? (
-                    <LoaderCircle size={14} className="animate-spin" />
-                  ) : (
-                    <Wallet size={14} />
-                  )}
-                  {wallet.address ? "Reconnect" : "Connect Wallet"}
-                </button>
+              icon={
+                healthState === "checking" ? (
+                  <LoaderCircle size={14} className="animate-spin" />
+                ) : (
+                  <RadioTower size={14} />
+                )
               }
-            >
-              <div className="space-y-4">
-                <div className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-white">
-                        {wallet.address ? shortAddress(wallet.address) : "Demo operator"}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {wallet.installed
-                          ? wallet.address
-                            ? `Freighter connected on ${wallet.network}`
-                            : "Freighter detected but this app is not yet authorized."
-                          : "Freighter not detected. The dashboard remains usable in simulation mode."}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        wallet.address
-                          ? "bg-emerald-400/10 text-emerald-200"
-                          : wallet.installed
-                            ? "bg-amber-300/10 text-amber-100"
-                            : "bg-slate-700 text-slate-200"
-                      }`}
-                    >
-                      {wallet.address
-                        ? "Connected"
-                        : wallet.installed
-                          ? "Needs access"
-                          : "Simulation"}
-                    </span>
-                  </div>
+              helper={healthMessage}
+            />
+            <StatusCard
+              label="Active Mode"
+              value={contractId || "Contract ID not provided"}
+              tone={
+                routeMode === "Backend relay"
+                  ? "text-cyan-300"
+                  : "text-amber-200"
+              }
+              icon={<Signature size={14} />}
+              helper={`${routeMode} - ${wallet.address ? shortAddress(wallet.address) : "demo account active"}`}
+            />
+          </div>
+        </div>
+      </header>
 
-                  <div className="mt-4 grid gap-3 text-xs text-slate-300">
-                    <StatCell label="Network" value={wallet.network || "TESTNET"} />
-                    <StatCell
-                      label="Soroban RPC"
-                      value={wallet.rpcUrl || "Use Freighter network defaults"}
-                    />
-                    <StatCell
-                      label="Passphrase"
-                      value={
-                        wallet.networkPassphrase
-                          ? wallet.networkPassphrase
-                          : "Request access to inspect the active passphrase"
-                      }
-                    />
-                  </div>
+      <main className="grid flex-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_420px]">
+        <section className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Total Collateral"
+              value={formatUsd(totalCollateral)}
+              helper="Stable collateral parked across open mint positions"
+              icon={<Shield size={18} />}
+            />
+            <MetricCard
+              label="Minted Exposure"
+              value={formatUsd(mintedExposure)}
+              helper="Marked to current oracle prices"
+              icon={<Coins size={18} />}
+            />
+            <MetricCard
+              label="Open Interest"
+              value={formatUsd(openInterest)}
+              helper="Gross notional across open trades"
+              icon={<TrendingUp size={18} />}
+            />
+            <MetricCard
+              label="Protocol Supply"
+              value={formatUsd(totalSupplyValue)}
+              helper="Aggregate value of all registered synth supply"
+              icon={<BadgeDollarSign size={18} />}
+            />
+          </div>
 
-                  {wallet.error ? (
-                    <p className="mt-4 flex items-center gap-2 text-xs text-amber-100">
-                      <AlertTriangle size={14} />
-                      {wallet.error}
-                    </p>
-                  ) : null}
-                </div>
+          <Panel
+            title="Live Markets"
+            eyebrow="Oracle tape"
+            action={
+              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100">
+                Refreshes every 4.5s
+              </span>
+            }
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {assets.map((asset) => {
+                const points = buildSparklinePoints(asset.sparkline);
+                const positive = asset.change24h >= 0;
 
-                <div className="space-y-2">
-                  <FieldLabel htmlFor="contractId">Contract ID</FieldLabel>
-                  <input
-                    id="contractId"
-                    value={contractId}
-                    onChange={(event) => setContractId(event.target.value.trim().toUpperCase())}
-                    placeholder="C..."
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/50"
-                  />
-                  <p className="text-xs text-slate-400">
-                    A valid contract ID plus an online backend switches the action composer into relay mode.
-                  </p>
-                </div>
-              </div>
-            </Panel>
-
-            <Panel title="Contract Composer" eyebrow="Actions">
-              <div className="space-y-4">
-                <div className="grid grid-cols-5 gap-2">
-                  {(["register", "mint", "collateral", "trade", "oracle"] as ActionMode[]).map(
-                    (mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setActiveComposer(mode)}
-                        className={`rounded-2xl px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
-                          activeComposer === mode
-                            ? "bg-gradient-to-r from-amber-400 to-cyan-400 text-slate-950"
-                            : "border border-white/8 bg-white/[0.03] text-slate-300 hover:border-cyan-400/30 hover:text-cyan-100"
-                        }`}
-                      >
-                        {mode === "collateral" ? "Top Up" : mode}
-                      </button>
-                    ),
-                  )}
-                </div>
-
-                {activeComposer === "register" ? (
-                  <ComposerShell
-                    title="Register a synthetic asset"
-                    description="Seed a new symbol for minting and oracle updates."
-                    submitLabel="Register Asset"
-                    isSubmitting={isSubmitting}
-                    onSubmit={() => void handleRegisterAsset()}
-                  >
-                    <InputGrid>
-                      <InputField
-                        label="Symbol"
-                        value={registerForm.symbol}
-                        onChange={(value) =>
-                          setRegisterForm((prev) => ({ ...prev, symbol: value.toUpperCase() }))
-                        }
-                      />
-                      <InputField
-                        label="Initial Price"
-                        value={registerForm.price}
-                        onChange={(value) =>
-                          setRegisterForm((prev) => ({ ...prev, price: value }))
-                        }
-                      />
-                    </InputGrid>
-                    <InputField
-                      label="Display Name"
-                      value={registerForm.name}
-                      onChange={(value) =>
-                        setRegisterForm((prev) => ({ ...prev, name: value }))
-                      }
-                    />
-                  </ComposerShell>
-                ) : null}
-
-                {activeComposer === "mint" ? (
-                  <ComposerShell
-                    title="Mint against collateral"
-                    description="Match the contract's minimum ratio before opening a position."
-                    submitLabel="Mint Synthetic"
-                    isSubmitting={isSubmitting}
-                    onSubmit={() => void handleMint()}
-                  >
-                    <InputGrid>
-                      <SelectField
-                        label="Asset"
-                        value={mintForm.assetSymbol}
-                        options={assets.map((asset) => ({
-                          label: asset.symbol,
-                          value: asset.symbol,
-                        }))}
-                        onChange={(value) =>
-                          setMintForm((prev) => ({ ...prev, assetSymbol: value }))
-                        }
-                      />
-                      <InputField
-                        label="Mint Amount"
-                        value={mintForm.mintAmount}
-                        onChange={(value) =>
-                          setMintForm((prev) => ({ ...prev, mintAmount: value }))
-                        }
-                      />
-                    </InputGrid>
-                    <InputField
-                      label="Collateral Amount (USD)"
-                      value={mintForm.collateral}
-                      onChange={(value) =>
-                        setMintForm((prev) => ({ ...prev, collateral: value }))
-                      }
-                    />
-                  </ComposerShell>
-                ) : null}
-
-                {activeComposer === "collateral" ? (
-                  <ComposerShell
-                    title="Top up an existing position"
-                    description="Use this before health drops into the liquidation band."
-                    submitLabel="Add Collateral"
-                    isSubmitting={isSubmitting}
-                    onSubmit={() => void handleAddCollateral()}
-                  >
-                    <InputGrid>
-                      <SelectField
-                        label="Position"
-                        value={collateralForm.positionId}
-                        options={filteredPositions.map((position) => ({
-                          label: `#${position.id} ${position.assetSymbol}`,
-                          value: String(position.id),
-                        }))}
-                        onChange={(value) =>
-                          setCollateralForm((prev) => ({ ...prev, positionId: value }))
-                        }
-                      />
-                      <InputField
-                        label="Additional Collateral"
-                        value={collateralForm.additionalCollateral}
-                        onChange={(value) =>
-                          setCollateralForm((prev) => ({
-                            ...prev,
-                            additionalCollateral: value,
-                          }))
-                        }
-                      />
-                    </InputGrid>
-                  </ComposerShell>
-                ) : null}
-
-                {activeComposer === "trade" ? (
-                  <ComposerShell
-                    title="Open a leveraged trade"
-                    description="The desk mirrors the contract's 1x to 10x leverage band and minimum margin floor."
-                    submitLabel="Open Trade"
-                    isSubmitting={isSubmitting}
-                    onSubmit={() => void handleOpenTrade()}
-                  >
-                    <InputGrid>
-                      <SelectField
-                        label="Asset"
-                        value={tradeForm.assetSymbol}
-                        options={assets.map((asset) => ({
-                          label: asset.symbol,
-                          value: asset.symbol,
-                        }))}
-                        onChange={(value) =>
-                          setTradeForm((prev) => ({ ...prev, assetSymbol: value }))
-                        }
-                      />
-                      <SelectField
-                        label="Direction"
-                        value={tradeForm.direction}
-                        options={[
-                          { label: "Long", value: "Long" },
-                          { label: "Short", value: "Short" },
-                        ]}
-                        onChange={(value) =>
-                          setTradeForm((prev) => ({
-                            ...prev,
-                            direction: value as Direction,
-                          }))
-                        }
-                      />
-                    </InputGrid>
-                    <InputGrid>
-                      <InputField
-                        label="Margin"
-                        value={tradeForm.margin}
-                        onChange={(value) =>
-                          setTradeForm((prev) => ({ ...prev, margin: value }))
-                        }
-                      />
-                      <InputField
-                        label="Leverage"
-                        value={tradeForm.leverage}
-                        onChange={(value) =>
-                          setTradeForm((prev) => ({ ...prev, leverage: value }))
-                        }
-                      />
-                    </InputGrid>
-                  </ComposerShell>
-                ) : null}
-
-                {activeComposer === "oracle" ? (
-                  <ComposerShell
-                    title="Publish an oracle mark"
-                    description="Push a new mark and confidence score into the live market board."
-                    submitLabel="Update Price"
-                    isSubmitting={isSubmitting}
-                    onSubmit={() => void handlePriceUpdate()}
-                  >
-                    <InputGrid>
-                      <SelectField
-                        label="Asset"
-                        value={oracleForm.assetSymbol}
-                        options={assets.map((asset) => ({
-                          label: asset.symbol,
-                          value: asset.symbol,
-                        }))}
-                        onChange={(value) =>
-                          setOracleForm((prev) => ({ ...prev, assetSymbol: value }))
-                        }
-                      />
-                      <InputField
-                        label="Confidence"
-                        value={oracleForm.confidence}
-                        onChange={(value) =>
-                          setOracleForm((prev) => ({ ...prev, confidence: value }))
-                        }
-                      />
-                    </InputGrid>
-                    <InputField
-                      label="New Price"
-                      value={oracleForm.price}
-                      onChange={(value) =>
-                        setOracleForm((prev) => ({ ...prev, price: value }))
-                      }
-                    />
-                  </ComposerShell>
-                ) : null}
-              </div>
-            </Panel>
-
-            <Panel title="Transaction Timeline" eyebrow="Status tracking">
-              <div className="space-y-3">
-                {transactions.map((item) => (
+                return (
                   <div
-                    key={item.id}
-                    className="rounded-[20px] border border-white/8 bg-white/[0.03] p-4"
+                    key={asset.symbol}
+                    className="rounded-[22px] border border-slate-800 bg-slate-900/50 p-4 shadow-sm backdrop-blur"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-white">{item.title}</p>
-                        <p className="mt-1 text-xs text-slate-400">{item.detail}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                          {asset.name}
+                        </p>
+                        <h3 className="mt-2 text-2xl font-semibold text-white">
+                          {asset.symbol}
+                        </h3>
                       </div>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${txTone(item.status)}`}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+                          positive
+                            ? "bg-emerald-400/10 text-emerald-200"
+                            : "bg-rose-400/10 text-rose-200"
+                        }`}
                       >
-                        {item.status === "confirmed" ? (
-                          <CheckCircle2 size={14} />
-                        ) : item.status === "failed" ? (
-                          <AlertTriangle size={14} />
-                        ) : item.status === "submitted" ? (
-                          <Activity size={14} />
-                        ) : item.status === "awaiting_wallet" ? (
-                          <Wallet size={14} />
+                        {positive ? (
+                          <ArrowUpRight size={14} />
                         ) : (
-                          <Boxes size={14} />
+                          <ArrowDownRight size={14} />
                         )}
-                        {item.status.replace("_", " ")}
+                        {formatPercent(asset.change24h)}
                       </span>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                      <span>{new Date(item.createdAt).toLocaleTimeString()}</span>
-                      {item.hash ? <span>{item.hash}</span> : null}
-                      {item.output ? <span>Output {item.output}</span> : null}
+                    <div className="mt-4 flex items-end justify-between">
+                      <div>
+                        <p className="text-3xl font-semibold text-white">
+                          {formatUsd(asset.price)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Confidence {asset.confidence}%
+                        </p>
+                      </div>
+                      <div className="text-right text-xs text-slate-400">
+                        <p>Supply {formatAmount(asset.totalSupply, 0)}</p>
+                        <p>Volume {formatUsd(asset.volume24h)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 overflow-hidden rounded-2xl border border-white/6 bg-slate-950/70 p-2">
+                      <svg viewBox="0 0 160 62" className="h-20 w-full">
+                        <defs>
+                          <linearGradient
+                            id={`gradient-${asset.symbol}`}
+                            x1="0%"
+                            y1="0%"
+                            y2="0%"
+                            x2="100%"
+                          >
+                            <stop offset="0%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#22d3ee" />
+                          </linearGradient>
+                        </defs>
+                        <polyline
+                          fill="none"
+                          stroke={`url(#gradient-${asset.symbol})`}
+                          strokeWidth="3"
+                          points={points}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </div>
                   </div>
-                ))}
+                );
+              })}
+            </div>
+          </Panel>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <Panel title="Collateral Positions" eyebrow="Health monitor">
+              <div className="space-y-3">
+                {filteredPositions.length === 0 ? (
+                  <EmptyState label="No collateral positions yet." />
+                ) : (
+                  filteredPositions.map((position) => {
+                    const asset = assetFor(assets, position.assetSymbol);
+                    const ratio = collateralRatio(position, asset);
+                    const liquidatable = ratio <= LIQUIDATION_THRESHOLD;
+
+                    return (
+                      <div
+                        key={position.id}
+                        className="rounded-[20px] border border-slate-800 bg-slate-900/30 p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">
+                              Position #{position.id} - {position.assetSymbol}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {formatUsd(position.collateral)} collateral for{" "}
+                              {formatAmount(position.minted)} minted
+                            </p>
+                          </div>
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                              liquidatable
+                                ? "bg-rose-400/10 text-rose-200"
+                                : ratio < MIN_COLLATERAL_RATIO + 20
+                                  ? "bg-amber-300/10 text-amber-100"
+                                  : "bg-emerald-400/10 text-emerald-200"
+                            }`}
+                          >
+                            {liquidatable ? "Liquidatable" : "Healthy"}
+                          </span>
+                        </div>
+
+                        <div className="mt-4">
+                          <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
+                            <span>Collateral ratio</span>
+                            <span>{ratio.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-slate-900">
+                            <div
+                              className={`h-2 rounded-full ${
+                                liquidatable
+                                  ? "bg-rose-400"
+                                  : ratio < MIN_COLLATERAL_RATIO + 20
+                                    ? "bg-amber-300"
+                                    : "bg-emerald-400"
+                              }`}
+                              style={{ width: `${clamp(ratio / 2, 8, 100)}%` }}
+                            />
+                          </div>
+                          <div className="mt-2 flex justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                            <span>Liquidation {LIQUIDATION_THRESHOLD}%</span>
+                            <span>Minimum {MIN_COLLATERAL_RATIO}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </Panel>
-          </aside>
-        </main>
-      </div>
+
+            <Panel title="Trading Book" eyebrow="PnL monitor">
+              <div className="space-y-3">
+                {filteredTrades.length === 0 ? (
+                  <EmptyState label="No open trades yet." />
+                ) : (
+                  filteredTrades.map((trade) => {
+                    const asset = assetFor(assets, trade.assetSymbol);
+                    const pnl = tradePnl(trade, asset);
+                    const liquidationPrice = tradeLiquidationPrice(trade);
+                    const underwater = trade.margin + pnl <= 0;
+
+                    return (
+                      <div
+                        key={trade.id}
+                        className="rounded-[20px] border border-slate-800 bg-slate-900/30 p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">
+                              {trade.direction} {trade.assetSymbol} #{trade.id}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {trade.leverage.toFixed(1)}x leverage with {formatUsd(trade.margin)} margin
+                            </p>
+                          </div>
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                              pnl >= 0
+                                ? "bg-emerald-400/10 text-emerald-200"
+                                : "bg-rose-400/10 text-rose-200"
+                            }`}
+                          >
+                            {pnl >= 0 ? "+" : ""}
+                            {formatUsd(pnl)}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 text-xs text-slate-300 sm:grid-cols-3">
+                          <StatCell label="Entry" value={formatUsd(trade.entryPrice)} />
+                          <StatCell label="Mark" value={formatUsd(asset?.price || 0)} />
+                          <StatCell
+                            label="Liq. Price"
+                            value={formatUsd(liquidationPrice)}
+                          />
+                        </div>
+
+                        {underwater ? (
+                          <p className="mt-3 flex items-center gap-2 text-xs text-rose-200">
+                            <AlertTriangle size={14} />
+                            Margin exhausted. Close or recapitalize this trade.
+                          </p>
+                        ) : (
+                          <p className="mt-3 text-xs text-slate-400">
+                            Gross notional {formatUsd(tradeNotional(trade))} across the current mark.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </Panel>
+          </div>
+        </section>
+
+        <aside className="flex flex-col gap-6">
+          <Panel
+            title="Wallet and Routing"
+            eyebrow="Freighter"
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  useEffect(() => {
+                    void loadWalletState(true);
+                  }, []);
+                }}
+                disabled={wallet.isLoading}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-cyan-400/40 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {wallet.isLoading ? (
+                  <LoaderCircle size={14} className="animate-spin" />
+                ) : (
+                  <Wallet size={14} />
+                )}
+                {wallet.address ? "Reconnect" : "Connect Wallet"}
+              </button>
+            }
+          >
+            <div className="space-y-4">
+              <div className="rounded-[20px] border border-slate-800 bg-slate-900/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      {wallet.address ? shortAddress(wallet.address) : "Demo operator"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {wallet.installed
+                        ? wallet.address
+                          ? `Freighter connected on ${wallet.network}`
+                          : "Freighter detected but this app is not yet authorized."
+                        : "Freighter not detected. The dashboard remains usable in simulation mode."}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                      wallet.address
+                        ? "bg-emerald-400/10 text-emerald-200"
+                        : wallet.installed
+                          ? "bg-amber-300/10 text-amber-100"
+                          : "bg-slate-700 text-slate-200"
+                    }`}
+                  >
+                    {wallet.address
+                      ? "Connected"
+                      : wallet.installed
+                        ? "Needs access"
+                        : "Simulation"}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 text-xs text-slate-300">
+                  <StatCell label="Network" value={wallet.network || "TESTNET"} />
+                  <StatCell
+                    label="Soroban RPC"
+                    value={wallet.rpcUrl || "Use Freighter network defaults"}
+                  />
+                  <StatCell
+                    label="Passphrase"
+                    value={
+                      wallet.networkPassphrase
+                        ? wallet.networkPassphrase
+                        : "Request access to inspect the active passphrase"
+                    }
+                  />
+                </div>
+
+                {wallet.error ? (
+                  <p className="mt-4 flex items-center gap-2 text-xs text-amber-100">
+                    <AlertTriangle size={14} />
+                    {wallet.error}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <FieldLabel htmlFor="contractId">Contract ID</FieldLabel>
+                <input
+                  id="contractId"
+                  value={contractId}
+                  onChange={(event) => setContractId(event.target.value.trim().toUpperCase())}
+                  placeholder="C..."
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/50"
+                />
+                <p className="text-xs text-slate-400">
+                  A valid contract ID plus an online backend switches the action composer into relay mode.
+                </p>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Contract Composer" eyebrow="Actions">
+            <div className="space-y-4">
+              <div className="grid grid-cols-5 gap-2">
+                {(["register", "mint", "collateral", "trade", "oracle"] as ActionMode[]).map(
+                  (mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setActiveComposer(mode)}
+                      className={`rounded-2xl px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
+                        activeComposer === mode
+                          ? "bg-gradient-to-r from-amber-400 to-cyan-400 text-slate-950"
+                          : "border border-white/8 bg-white/[0.03] text-slate-300 hover:border-cyan-400/30 hover:text-cyan-100"
+                      }`}
+                    >
+                      {mode === "collateral" ? "Top Up" : mode}
+                    </button>
+                  ),
+                )}
+              </div>
+
+              {activeComposer === "register" ? (
+                <ComposerShell
+                  title="Register a synthetic asset"
+                  description="Seed a new symbol for minting and oracle updates."
+                  submitLabel="Register Asset"
+                  isSubmitting={isSubmitting}
+                  onSubmit={() => void handleRegisterAsset()}
+                >
+                  <InputGrid>
+                    <InputField
+                      label="Symbol"
+                      value={registerForm.symbol}
+                      onChange={(value) =>
+                        setRegisterForm((prev) => ({ ...prev, symbol: value.toUpperCase() }))
+                      }
+                    />
+                    <InputField
+                      label="Initial Price"
+                      value={registerForm.price}
+                      onChange={(value) =>
+                        setRegisterForm((prev) => ({ ...prev, price: value }))
+                      }
+                    />
+                  </InputGrid>
+                  <InputField
+                    label="Display Name"
+                    value={registerForm.name}
+                    onChange={(value) =>
+                      setRegisterForm((prev) => ({ ...prev, name: value }))
+                    }
+                  />
+                </ComposerShell>
+              ) : null}
+
+              {activeComposer === "mint" ? (
+                <ComposerShell
+                  title="Mint against collateral"
+                  description="Match the contract's minimum ratio before opening a position."
+                  submitLabel="Mint Synthetic"
+                  isSubmitting={isSubmitting}
+                  onSubmit={() => void handleMint()}
+                >
+                  <InputGrid>
+                    <SelectField
+                      label="Asset"
+                      value={mintForm.assetSymbol}
+                      options={assets.map((asset) => ({
+                        label: asset.symbol,
+                        value: asset.symbol,
+                      }))}
+                      onChange={(value) =>
+                        setMintForm((prev) => ({ ...prev, assetSymbol: value }))
+                      }
+                    />
+                    <InputField
+                      label="Mint Amount"
+                      value={mintForm.mintAmount}
+                      onChange={(value) =>
+                        setMintForm((prev) => ({ ...prev, mintAmount: value }))
+                      }
+                    />
+                  </InputGrid>
+                  <InputField
+                    label="Collateral Amount (USD)"
+                    value={mintForm.collateral}
+                    onChange={(value) =>
+                      setMintForm((prev) => ({ ...prev, collateral: value }))
+                    }
+                  />
+                </ComposerShell>
+              ) : null}
+
+              {activeComposer === "collateral" ? (
+                <ComposerShell
+                  title="Top up an existing position"
+                  description="Use this before health drops into the liquidation band."
+                  submitLabel="Add Collateral"
+                  isSubmitting={isSubmitting}
+                  onSubmit={() => void handleAddCollateral()}
+                >
+                  <InputGrid>
+                    <SelectField
+                      label="Position"
+                      value={collateralForm.positionId}
+                      options={filteredPositions.map((position) => ({
+                        label: `#${position.id} ${position.assetSymbol}`,
+                        value: String(position.id),
+                      }))}
+                      onChange={(value) =>
+                        setCollateralForm((prev) => ({ ...prev, positionId: value }))
+                      }
+                    />
+                    <InputField
+                      label="Additional Collateral"
+                      value={collateralForm.additionalCollateral}
+                      onChange={(value) =>
+                        setCollateralForm((prev) => ({
+                          ...prev,
+                          additionalCollateral: value,
+                        }))
+                      }
+                    />
+                  </InputGrid>
+                </ComposerShell>
+              ) : null}
+
+              {activeComposer === "trade" ? (
+                <ComposerShell
+                  title="Open a leveraged trade"
+                  description="The desk mirrors the contract's 1x to 10x leverage band and minimum margin floor."
+                  submitLabel="Open Trade"
+                  isSubmitting={isSubmitting}
+                  onSubmit={() => void handleOpenTrade()}
+                >
+                  <InputGrid>
+                    <SelectField
+                      label="Asset"
+                      value={tradeForm.assetSymbol}
+                      options={assets.map((asset) => ({
+                        label: asset.symbol,
+                        value: asset.symbol,
+                      }))}
+                      onChange={(value) =>
+                        setTradeForm((prev) => ({ ...prev, assetSymbol: value }))
+                      }
+                    />
+                    <SelectField
+                      label="Direction"
+                      value={tradeForm.direction}
+                      options={[
+                        { label: "Long", value: "Long" },
+                        { label: "Short", value: "Short" },
+                      ]}
+                      onChange={(value) =>
+                        setTradeForm((prev) => ({
+                          ...prev,
+                          direction: value as Direction,
+                        }))
+                      }
+                    />
+                  </InputGrid>
+                  <InputGrid>
+                    <InputField
+                      label="Margin"
+                      value={tradeForm.margin}
+                      onChange={(value) =>
+                        setTradeForm((prev) => ({ ...prev, margin: value }))
+                      }
+                    />
+                    <InputField
+                      label="Leverage"
+                      value={tradeForm.leverage}
+                      onChange={(value) =>
+                        setTradeForm((prev) => ({ ...prev, leverage: value }))
+                      }
+                    />
+                  </InputGrid>
+                </ComposerShell>
+              ) : null}
+
+              {activeComposer === "oracle" ? (
+                <ComposerShell
+                  title="Publish an oracle mark"
+                  description="Push a new mark and confidence score into the live market board."
+                  submitLabel="Update Price"
+                  isSubmitting={isSubmitting}
+                  onSubmit={() => void handlePriceUpdate()}
+                >
+                  <InputGrid>
+                    <SelectField
+                      label="Asset"
+                      value={oracleForm.assetSymbol}
+                      options={assets.map((asset) => ({
+                        label: asset.symbol,
+                        value: asset.symbol,
+                      }))}
+                      onChange={(value) =>
+                        setOracleForm((prev) => ({ ...prev, assetSymbol: value }))
+                      }
+                    />
+                    <InputField
+                      label="Confidence"
+                      value={oracleForm.confidence}
+                      onChange={(value) =>
+                        setOracleForm((prev) => ({ ...prev, confidence: value }))
+                      }
+                    />
+                  </InputGrid>
+                  <InputField
+                    label="New Price"
+                    value={oracleForm.price}
+                    onChange={(value) =>
+                      setOracleForm((prev) => ({ ...prev, price: value }))
+                    }
+                  />
+                </ComposerShell>
+              ) : null}
+            </div>
+          </Panel>
+
+          <Panel title="Transaction Timeline" eyebrow="Status tracking">
+            <div className="space-y-3">
+              {transactions.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-[20px] border border-slate-800 bg-slate-900/30 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <p className="mt-1 text-xs text-slate-400">{item.detail}</p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${txTone(item.status)}`}
+                    >
+                      {item.status === "confirmed" ? (
+                        <CheckCircle2 size={14} />
+                      ) : item.status === "failed" ? (
+                        <AlertTriangle size={14} />
+                      ) : item.status === "submitted" ? (
+                        <Activity size={14} />
+                      ) : item.status === "awaiting_wallet" ? (
+                        <Wallet size={14} />
+                      ) : (
+                        <Boxes size={14} />
+                      )}
+                      {item.status.replace("_", " ")}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                    <span suppressHydrationWarning>{new Date(item.createdAt).toLocaleTimeString()}</span>
+                    {item.hash ? <span>{item.hash}</span> : null}
+                    {item.output ? <span>Output {item.output}</span> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </aside>
+      </main>
     </div>
   );
 }

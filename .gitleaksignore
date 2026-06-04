@@ -1,0 +1,7 @@
+# Gitleaks ignore file
+# Format: <commit>:<file>:<rule>:<line>
+# These are confirmed false positives — documentation examples, not real secrets.
+
+# SYNTHETIC_ASSETS_DOCS.md line 419: COLLATERAL_TOKEN is a placeholder Stellar address
+# in an env variable documentation example, not a real credential.
+3a5ad99ce2b0a36e6e4a40ea98a9b5f41aaaeb3a:SYNTHETIC_ASSETS_DOCS.md:generic-api-key:419

@@ -60,17 +60,17 @@ const PriceChart: React.FC<PriceChartProps> = ({ assetSymbol, onPriceUpdate }) =
       <div className="chart-stats">
         <div className="stat">
           <label>24h Change</label>
-          <value className={isPositive ? 'positive' : 'negative'}>
+          <span className={isPositive ? 'positive' : 'negative'}>
             {isPositive ? '+' : ''}{priceChangePercent.toFixed(2)}%
-          </value>
+          </span>
         </div>
         <div className="stat">
           <label>Volume (24h)</label>
-          <value>$2,456,789</value>
+          <span>$2,456,789</span>
         </div>
         <div className="stat">
           <label>Market Cap</label>
-          <value>$125,456,789</value>
+          <span>$125,456,789</span>
         </div>
       </div>
     </div>

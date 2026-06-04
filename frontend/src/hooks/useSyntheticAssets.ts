@@ -38,9 +38,9 @@ export const useSyntheticAssets = (userAddress?: string) => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [prices, setPrices] = useState<Record<string, number>>({});
-  const [protocolParams, setProtocolParams] = useState<ProtocolParams | null>(null);
+  const [protocolParams, setProtocolParams] = useState<ProtocolParams | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
 
   const {
     getRegisteredAssets,
@@ -62,7 +62,7 @@ export const useSyntheticAssets = (userAddress?: string) => {
           totalSupply: 0,
         }));
         setAssets(assetDetails);
-        setError(null);
+        setError(undefined);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch assets');
@@ -85,7 +85,7 @@ export const useSyntheticAssets = (userAddress?: string) => {
         }
       }
       setPrices(priceData);
-      setError(null);
+      setError(undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch prices');
     }
@@ -99,7 +99,7 @@ export const useSyntheticAssets = (userAddress?: string) => {
       // In a real implementation, you would fetch user positions from the API
       // For now, we'll just clear them
       setPositions([]);
-      setError(null);
+      setError(undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch positions');
     } finally {
@@ -112,7 +112,7 @@ export const useSyntheticAssets = (userAddress?: string) => {
       const response = await getProtocolParams();
       if (response.success) {
         setProtocolParams(response.data);
-        setError(null);
+        setError(undefined);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch protocol params');

@@ -629,7 +629,7 @@ export default function AdminDashboard() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-center text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center text-sm">
               <div className="rounded-lg bg-gray-800 p-3">
                 <p className="text-gray-500">Schemas</p>
                 <p className="mt-1 font-semibold">{eventMetrics.schemas?.versions || 0}</p>
@@ -892,21 +892,24 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {analytics?.topIps?.length ? (
-                Array.from({ length: analytics.topIps.length / 2 }).map((_, index) => (
-                  <tr key={analytics.topIps[index * 2]}>
-                    <td className="py-4 font-mono text-gray-300">
-                      {analytics.topIps[index * 2]}
-                    </td>
-                    <td className="py-4 font-bold">
-                      {analytics.topIps[index * 2 + 1]}
-                    </td>
-                    <td className="flex items-center gap-2 py-4 text-emerald-400">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                      Active
-                    </td>
-                  </tr>
-                ))
+              {analytics?.topIps && analytics.topIps.length > 0 ? (
+                (() => {
+                  const ips = analytics.topIps;
+                  return Array.from({ length: ips.length / 2 }).map((_, index) => (
+                    <tr key={ips[index * 2]}>
+                      <td className="py-4 font-mono text-gray-300">
+                        {ips[index * 2]}
+                      </td>
+                      <td className="py-4 font-bold">
+                        {ips[index * 2 + 1]}
+                      </td>
+                      <td className="flex items-center gap-2 py-4 text-emerald-400">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                        Active
+                      </td>
+                    </tr>
+                  ));
+                })()
               ) : (
                 <tr>
                   <td colSpan={3} className="py-6 text-center text-gray-500">

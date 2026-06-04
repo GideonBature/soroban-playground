@@ -73,9 +73,20 @@ function EventRow({ event }: { event: WsEvent }) {
   const [expanded, setExpanded] = useState(false);
 
   const parsedData = useMemo(() => {
-    try { return JSON.stringify(JSON.parse(event.data), null, 2); }
-    catch { return event.data; }
-  }, [event.data]);
+    if (event.type === "quorum_update") {
+      return JSON.stringify(event, null, 2);
+    }
+    try {
+      return JSON.stringify(JSON.parse(event.data), null, 2);
+    } catch {
+      return event.data;
+    }
+  }, [event]);
+
+  const eventType = event.type === "event" ? event.event_type : event.type;
+  const contractId = event.type === "event" ? event.contract_id : event.id;
+  const ledger = event.type === "event" ? event.ledger : 0;
+  const timestamp = event.type === "event" ? event.ledger_closed_at : event.created_at;
 
   return (
     <div
@@ -85,23 +96,23 @@ function EventRow({ event }: { event: WsEvent }) {
       {/* Main row */}
       <div className="flex items-center gap-3 min-w-0">
         {/* Event type badge */}
-        <span className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${eventTypeClass(event.event_type)}`}>
-          {event.event_type}
+        <span className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${eventTypeClass(eventType)}`}>
+          {eventType}
         </span>
 
         {/* Contract ID (truncated) */}
         <span className="font-mono text-[11px] text-slate-400 truncate max-w-[130px]">
-          {event.contract_id.slice(0, 8)}…{event.contract_id.slice(-4)}
+          {contractId.slice(0, 8)}…{contractId.slice(-4)}
         </span>
 
         {/* Ledger */}
         <span className="text-[11px] text-slate-500 flex-shrink-0">
-          {formatLedger(event.ledger)}
+          {ledger > 0 ? formatLedger(ledger) : "System"}
         </span>
 
         {/* Timestamp */}
         <span className="ml-auto flex-shrink-0 text-[10px] text-slate-600">
-          {relativeTime(event.ledger_closed_at)}
+          {relativeTime(timestamp)}
         </span>
 
         {/* Expand indicator */}

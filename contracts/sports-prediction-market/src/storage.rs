@@ -1,0 +1,118 @@
+use soroban_sdk::{Address, Env, String, Symbol};
+
+use crate::types::{BetPosition, Error, SportMarket};
+
+const ADMIN_KEY: &str = "admin";
+const PAUSED_KEY: &str = "paused";
+const MARKET_COUNT_KEY: &str = "mkt_cnt";
+
+fn market_key(env: &Env, id: u32) -> Symbol {
+    // Create symbol directly without string concatenation
+    // Use a fixed-length symbol format
+    let mut buf = [0u8; 8];
+    buf[0] = b's';
+    buf[1] = b'm';
+    // Convert id to bytes (simplified for Soroban)
+    let id_bytes = id.to_be_bytes();
+    buf[2] = id_bytes[2];
+    buf[3] = id_bytes[3];
+    Symbol::new(env, &buf)
+}
+
+fn position_key(env: &Env, market_id: u32, bettor: &Address) -> Symbol {
+    // Create symbol directly without string concatenation
+    // Use a fixed-length symbol format
+    let mut buf = [0u8; 12];
+    buf[0] = b'b';
+    buf[1] = b'p';
+    // Convert market_id to bytes
+    let id_bytes = market_id.to_be_bytes();
+    buf[2] = id_bytes[2];
+    buf[3] = id_bytes[3];
+    buf[4] = b'_';
+    // Use first few bytes of address
+    let addr_bytes = bettor.to_bytes();
+    buf[5] = addr_bytes[0];
+    buf[6] = addr_bytes[1];
+    buf[7] = addr_bytes[2];
+    buf[8] = addr_bytes[3];
+    Symbol::new(env, &buf)
+}
+
+// ── Admin / pause ─────────────────────────────────────────────────────────────
+
+pub fn is_initialized(env: &Env) -> bool {
+    env.storage().instance().has(&Symbol::new(env, ADMIN_KEY))
+}
+
+pub fn set_admin(env: &Env, admin: &Address) {
+    env.storage()
+        .instance()
+        .set(&Symbol::new(env, ADMIN_KEY), admin);
+}
+
+pub fn get_admin(env: &Env) -> Result<Address, Error> {
+    env.storage()
+        .instance()
+        .get(&Symbol::new(env, ADMIN_KEY))
+        .ok_or(Error::NotInitialized)
+}
+
+pub fn is_paused(env: &Env) -> bool {
+    env.storage()
+        .instance()
+        .get::<Symbol, bool>(&Symbol::new(env, PAUSED_KEY))
+        .unwrap_or(false)
+}
+
+pub fn set_paused(env: &Env, paused: bool) {
+    env.storage()
+        .instance()
+        .set(&Symbol::new(env, PAUSED_KEY), &paused);
+}
+
+// ── Market count ──────────────────────────────────────────────────────────────
+
+pub fn get_market_count(env: &Env) -> u32 {
+    env.storage()
+        .instance()
+        .get(&Symbol::new(env, MARKET_COUNT_KEY))
+        .unwrap_or(0u32)
+}
+
+pub fn increment_market_count(env: &Env) -> u32 {
+    let count = get_market_count(env) + 1;
+    env.storage()
+        .instance()
+        .set(&Symbol::new(env, MARKET_COUNT_KEY), &count);
+    count
+}
+
+// ── Markets ───────────────────────────────────────────────────────────────────
+
+pub fn set_market(env: &Env, market: &SportMarket) {
+    env.storage()
+        .persistent()
+        .set(&market_key(env, market.id), market);
+}
+
+pub fn get_market(env: &Env, id: u32) -> Result<SportMarket, Error> {
+    env.storage()
+        .persistent()
+        .get(&market_key(env, id))
+        .ok_or(Error::MarketNotFound)
+}
+
+// ── Positions ─────────────────────────────────────────────────────────────────
+
+pub fn set_position(env: &Env, pos: &BetPosition) {
+    env.storage()
+        .persistent()
+        .set(&position_key(env, pos.market_id, &pos.bettor), pos);
+}
+
+pub fn get_position(env: &Env, market_id: u32, bettor: &Address) -> Option<BetPosition> {
+    env.storage()
+        .persistent()
+        .get(&position_key(env, market_id, bettor))
+}
