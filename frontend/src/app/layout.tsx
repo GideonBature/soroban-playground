@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { GraphQLProvider } from "../components/providers/GraphQLProvider";
+import ResponsiveNav from "../components/ResponsiveNav";
 
 export const metadata: Metadata = {
-  title: "Synthetic Assets Desk | Soroban Playground",
+  title: "Stellar Soroban Playground",
   description:
-    "Monitor oracle prices, collateral health, leveraged trades, and Freighter wallet status for the synthetic-assets Soroban contract.",
+    "Interactive command desk suite and Monaco editor playground for compiling, deploying, and invoking smart contracts on Stellar Testnet.",
 };
 
 export default function RootLayout({
@@ -15,9 +16,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-gray-950 text-gray-100 antialiased">
+      <body className="min-h-screen bg-[#060c18] text-[#e6edf7] antialiased">
         <GraphQLProvider>
-          {children}
+          <ResponsiveNav>
+            {children}
+          </ResponsiveNav>
         </GraphQLProvider>
       </body>
     </html>

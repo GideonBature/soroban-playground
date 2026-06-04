@@ -187,7 +187,8 @@ async function runLoadTest(tier) {
       rateLimitedRequests: results.rateLimitedRequests,
       errors: results.errors,
       avgResponseTime: Math.round(
-        results.responseTimes.reduce((a, b) => a + b, 0) / results.responseTimes.length
+        results.responseTimes.reduce((a, b) => a + b, 0) /
+          results.responseTimes.length
       ),
       minResponseTime: Math.min(...responseTimes),
       maxResponseTime: Math.max(...responseTimes),
@@ -225,8 +226,8 @@ async function main() {
       Tier: r.tier,
       'Total Requests': r.totalRequests,
       'Rate Limited': r.rateLimitedRequests,
-      'Successful': r.successfulRequests,
-      'Errors': r.errors,
+      Successful: r.successfulRequests,
+      Errors: r.errors,
       'Avg Response': `${r.avgResponseTime}ms`,
       'Req/s': r.requestsPerSecond,
       'No Race Conds': r.noConcurrencyIssues ? '✓' : '✗',

@@ -34,7 +34,7 @@ const SyntheticAssetsDashboard: React.FC<SyntheticAssetsDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'positions' | 'trading' | 'analytics'>('overview');
   const [selectedAsset, setSelectedAsset] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
 
   // WebSocket for real-time updates
   const { data: wsData, subscribe, unsubscribe } = useWebSocket();
@@ -80,7 +80,7 @@ const SyntheticAssetsDashboard: React.FC<SyntheticAssetsDashboardProps> = ({
           refreshProtocolParams(),
           userAddress && refreshPositions(),
         ]);
-        setError(null);
+        setError(undefined);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
@@ -143,7 +143,7 @@ const SyntheticAssetsDashboard: React.FC<SyntheticAssetsDashboardProps> = ({
       {error && (
         <div className="alert alert-error">
           <span>{error}</span>
-          <button onClick={() => setError(null)}>✕</button>
+          <button onClick={() => setError(undefined)}>✕</button>
         </div>
       )}
 

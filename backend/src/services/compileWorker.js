@@ -9,6 +9,9 @@ parentPort.on('message', async (job) => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'soroban-compile-'));
   const sourceRoot = path.join(tempDir, 'src');
   await fs.mkdir(sourceRoot, { recursive: true });
+  await fs.mkdir(path.join(process.cwd(), 'cache', 'cargo-target'), {
+    recursive: true,
+  });
 
   try {
     await fs.writeFile(path.join(tempDir, 'Cargo.toml'), job.cargoToml, 'utf8');
@@ -27,8 +30,9 @@ parentPort.on('message', async (job) => {
 
     const result = await runCargoBuild(tempDir, job.timeoutMs);
     const wasmPath = path.join(
-      tempDir,
-      'target',
+      process.cwd(),
+      'cache',
+      'cargo-target',
       'wasm32-unknown-unknown',
       'release',
       'soroban_contract.wasm'
@@ -84,7 +88,11 @@ function runCargoBuild(cwd, timeoutMs) {
         cwd,
         shell: false,
         windowsHide: true,
-        env: { ...process.env, RUST_MIN_STACK: '268435456' },
+        env: {
+          ...process.env,
+          RUST_MIN_STACK: '268435456',
+          CARGO_TARGET_DIR: path.join(process.cwd(), 'cache', 'cargo-target'),
+        },
       }
     );
 

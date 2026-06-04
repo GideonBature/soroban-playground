@@ -4,9 +4,27 @@ import React, { useState, useEffect } from 'react';
 import MatchCard from '@/components/sports/MatchCard';
 import AnalyticsDashboard from '@/components/sports/AnalyticsDashboard';
 
+interface Market {
+    id: string;
+    event_name: string;
+    resolution_deadline: number;
+    home_team: string;
+    away_team: string;
+    odds_home: number;
+    odds_away: number;
+    commence_time: string;
+}
+
+interface Analytics {
+    total_volume_usdc: number;
+    active_bets: number;
+    avg_bet_size: number;
+    recent_activity: Array<{ outcome: string; time: string; amount: number }>;
+}
+
 export default function SportsPage() {
-    const [markets, setMarkets] = useState([]);
-    const [analytics, setAnalytics] = useState(null);
+    const [markets, setMarkets] = useState<Market[]>([]);
+    const [analytics, setAnalytics] = useState<Analytics | undefined>(undefined);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

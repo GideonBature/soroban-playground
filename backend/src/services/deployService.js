@@ -7,7 +7,12 @@ import {
   topoSortContracts,
   validateBatchContractsInput,
 } from './deployUtils.js';
-import { createSpan, setSpanAttributes, addSpanEvent, injectTraceContext } from '../utils/tracing.js';
+import {
+  createSpan,
+  setSpanAttributes,
+  addSpanEvent,
+  injectTraceContext,
+} from '../utils/tracing.js';
 import { alertManager } from '../utils/alerting.js';
 
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -26,7 +31,22 @@ function ensureDir(filePath) {
 function readState() {
   try {
     return JSON.parse(fs.readFileSync(DEFAULT_STATE_FILE, 'utf8'));
-  } catch {
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      try {
+        appendLog({
+          status: 'state-read-failed',
+          file: DEFAULT_STATE_FILE,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (logError) {
+        console.error(
+          'Failed to record deployment state read error:',
+          logError
+        );
+      }
+    }
     return { activeDeployments: [], history: [] };
   }
 }
@@ -48,6 +68,21 @@ function emitProgress(event) {
   });
 }
 
+export function validateDeployContract(contract) {
+  const errors = [];
+  if (!contract.sourceAccount) {
+    errors.push(
+      `sourceAccount is required for ${contract.contractName}; set SOROBAN_SOURCE_ACCOUNT or pass sourceAccount`
+    );
+  }
+  if (!fs.existsSync(contract.wasmPath)) {
+    errors.push(`WASM file does not exist: ${contract.wasmPath}`);
+  }
+  if (errors.length > 0) {
+    throw new Error(errors.join('; '));
+  }
+}
+
 export function validateBatchContracts(contracts) {
   validateBatchContractsInput(contracts);
   const normalized = contracts.map((contract, index) =>
@@ -64,7 +99,9 @@ export function validateBatchContracts(contracts) {
   return normalized;
 }
 
-function deployContract(contract, { signal, onProgress } = {}) {
+export function deployContract(contract, { signal, onProgress } = {}) {
+  validateDeployContract(contract);
+
   const span = createSpan('soroban.deploy', {
     'deploy.contract_name': contract.contractName,
     'deploy.contract_id': contract.id,
@@ -101,8 +138,7 @@ function deployContract(contract, { signal, onProgress } = {}) {
       () => {
         addSpanEvent(span, 'deploy.timeout');
         child.kill('SIGKILL');
-        done = true;
-        reject(new Error(`Deployment timed out for ${contract.contractName}`));
+        finish(new Error(`Deployment timed out for ${contract.contractName}`));
       },
       Number.parseInt(
         process.env.DEPLOY_TIMEOUT_MS || `${DEFAULT_TIMEOUT_MS}`,
@@ -118,7 +154,7 @@ function deployContract(contract, { signal, onProgress } = {}) {
       const durationMs = Date.now() - startTime;
       setSpanAttributes(span, {
         'deploy.duration_ms': durationMs,
-        'deploy.exit_code': err ? (err.code || 1) : 0,
+        'deploy.exit_code': err ? err.code || 1 : 0,
         'deploy.contract_id': result?.contractId,
       });
 
@@ -205,157 +241,164 @@ export async function deployBatchContracts(request, { signal } = {}) {
   });
 
   try {
-  const ordered = topoSortContracts(normalized);
-  const state = readState();
-  const deploymentId = request.batchId || `batch-${Date.now()}`;
-  const startedAt = new Date().toISOString();
+    const normalized = validateBatchContracts(request.contracts || []);
+    const ordered = topoSortContracts(normalized);
+    const state = readState();
+    const deploymentId = request.batchId || `batch-${Date.now()}`;
+    const startedAt = new Date().toISOString();
 
-  state.activeDeployments.push({
-    deploymentId,
-    startedAt,
-    contracts: ordered.map((contract) => contract.id),
-  });
-  writeState(state);
+    state.activeDeployments.push({
+      deploymentId,
+      startedAt,
+      contracts: ordered.map((contract) => contract.id),
+    });
+    writeState(state);
 
-  appendLog({ deploymentId, startedAt, status: 'started', contracts: ordered });
-  emitProgress({
-    requestId: request.requestId,
-    batchId: deploymentId,
-    status: 'deploying',
-    detail: `Starting batch deployment of ${ordered.length} contracts`,
-  });
+    appendLog({
+      deploymentId,
+      startedAt,
+      status: 'started',
+      contracts: ordered,
+    });
+    emitProgress({
+      requestId: request.requestId,
+      batchId: deploymentId,
+      status: 'deploying',
+      detail: `Starting batch deployment of ${ordered.length} contracts`,
+    });
 
-  const deployed = [];
+    const deployed = [];
 
-  try {
-    for (const contract of ordered) {
-      let attempt = 0;
-      let lastError = null;
-      while (attempt < 3) {
-        attempt += 1;
-        emitProgress({
-          requestId: request.requestId,
-          batchId: deploymentId,
-          contractId: contract.id,
-          contractName: contract.contractName,
-          status: 'deploying',
-          detail: `Deploying ${contract.contractName} attempt ${attempt}/3`,
-        });
-        try {
-          const result = await deployContract(contract, {
-            signal,
-            onProgress: (_status, detail) =>
-              emitProgress({
-                requestId: request.requestId,
-                batchId: deploymentId,
-                contractId: contract.id,
-                contractName: contract.contractName,
-                status: 'deploying',
-                detail,
-              }),
-          });
-
-          const record = {
-            ...contract,
-            contractId: result.contractId,
-            status: 'deployed',
-            deployedAt: new Date().toISOString(),
-          };
-          deployed.push(record);
+    try {
+      for (const contract of ordered) {
+        let attempt = 0;
+        let lastError = null;
+        while (attempt < 3) {
+          attempt += 1;
           emitProgress({
             requestId: request.requestId,
             batchId: deploymentId,
             contractId: contract.id,
             contractName: contract.contractName,
-            status: 'deployed',
-            detail: `Deployed ${contract.contractName}`,
+            status: 'deploying',
+            detail: `Deploying ${contract.contractName} attempt ${attempt}/3`,
           });
-          lastError = null;
-          break;
-        } catch (error) {
-          lastError = error;
-          if (attempt >= 3) {
-            throw error;
+          try {
+            const result = await deployContract(contract, {
+              signal,
+              onProgress: (_status, detail) =>
+                emitProgress({
+                  requestId: request.requestId,
+                  batchId: deploymentId,
+                  contractId: contract.id,
+                  contractName: contract.contractName,
+                  status: 'deploying',
+                  detail,
+                }),
+            });
+
+            const record = {
+              ...contract,
+              contractId: result.contractId,
+              status: 'deployed',
+              deployedAt: new Date().toISOString(),
+            };
+            deployed.push(record);
+            emitProgress({
+              requestId: request.requestId,
+              batchId: deploymentId,
+              contractId: contract.id,
+              contractName: contract.contractName,
+              status: 'deployed',
+              detail: `Deployed ${contract.contractName}`,
+            });
+            lastError = null;
+            break;
+          } catch (error) {
+            lastError = error;
+            if (attempt >= 3) {
+              throw error;
+            }
           }
+        }
+
+        if (lastError) {
+          throw lastError;
         }
       }
 
-      if (lastError) {
-        throw lastError;
-      }
+      state.activeDeployments = state.activeDeployments.filter(
+        (item) => item.deploymentId !== deploymentId
+      );
+      state.history.push({
+        deploymentId,
+        startedAt,
+        endedAt: new Date().toISOString(),
+        status: 'success',
+        contracts: deployed,
+      });
+      writeState(state);
+      appendLog({ deploymentId, status: 'success', contracts: deployed });
+      emitProgress({
+        requestId: request.requestId,
+        batchId: deploymentId,
+        status: 'success',
+        detail: 'Batch deployment completed successfully',
+      });
+
+      const completedAt = new Date().toISOString();
+      setSpanAttributes(span, {
+        'deploy.completed_at': completedAt,
+        'deploy.deployed_count': deployed.length,
+      });
+
+      return {
+        success: true,
+        status: 'success',
+        batchId: deploymentId,
+        contracts: deployed,
+        startedAt,
+        completedAt,
+      };
+    } catch (error) {
+      setSpanAttributes(span, {
+        error: true,
+        'error.message': error.message,
+      });
+      span.setStatus({ code: 2, message: error.message });
+
+      alertManager.checkDeploymentFailure(deploymentId, error);
+
+      await rollbackContracts(deployed, {
+        requestId: request.requestId,
+        batchId: deploymentId,
+      });
+      state.activeDeployments = state.activeDeployments.filter(
+        (item) => item.deploymentId !== deploymentId
+      );
+      state.history.push({
+        deploymentId,
+        startedAt,
+        endedAt: new Date().toISOString(),
+        status: 'failed',
+        error: error.message,
+        contracts: deployed,
+      });
+      writeState(state);
+      appendLog({
+        deploymentId,
+        status: 'failed',
+        error: error.message,
+        contracts: deployed,
+      });
+      emitProgress({
+        requestId: request.requestId,
+        batchId: deploymentId,
+        status: 'failed',
+        detail: error.message,
+      });
+      throw error;
     }
-
-    state.activeDeployments = state.activeDeployments.filter(
-      (item) => item.deploymentId !== deploymentId
-    );
-    state.history.push({
-      deploymentId,
-      startedAt,
-      endedAt: new Date().toISOString(),
-      status: 'success',
-      contracts: deployed,
-    });
-    writeState(state);
-    appendLog({ deploymentId, status: 'success', contracts: deployed });
-    emitProgress({
-      requestId: request.requestId,
-      batchId: deploymentId,
-      status: 'success',
-      detail: 'Batch deployment completed successfully',
-    });
-
-    const completedAt = new Date().toISOString();
-    setSpanAttributes(span, {
-      'deploy.completed_at': completedAt,
-      'deploy.deployed_count': deployed.length,
-    });
-
-    return {
-      success: true,
-      status: 'success',
-      batchId: deploymentId,
-      contracts: deployed,
-      startedAt,
-      completedAt,
-    };
-  } catch (error) {
-    setSpanAttributes(span, {
-      'error': true,
-      'error.message': error.message,
-    });
-    span.setStatus({ code: 2, message: error.message });
-
-    alertManager.checkDeploymentFailure(deploymentId, error);
-
-    await rollbackContracts(deployed, {
-      requestId: request.requestId,
-      batchId: deploymentId,
-    });
-    state.activeDeployments = state.activeDeployments.filter(
-      (item) => item.deploymentId !== deploymentId
-    );
-    state.history.push({
-      deploymentId,
-      startedAt,
-      endedAt: new Date().toISOString(),
-      status: 'failed',
-      error: error.message,
-      contracts: deployed,
-    });
-    writeState(state);
-    appendLog({
-      deploymentId,
-      status: 'failed',
-      error: error.message,
-      contracts: deployed,
-    });
-    emitProgress({
-      requestId: request.requestId,
-      batchId: deploymentId,
-      status: 'failed',
-      detail: error.message,
-    });
-    throw error;
   } finally {
     span.end();
   }

@@ -2,11 +2,13 @@
 // Each field carries a cost; the total must stay under MAX_COMPLEXITY.
 // Uses graphql-query-complexity with fieldExtensionsEstimator + simpleEstimator.
 
-import {
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const {
   getComplexity,
   fieldExtensionsEstimator,
   simpleEstimator,
-} from 'graphql-query-complexity';
+} = require('graphql-query-complexity');
 
 export const MAX_COMPLEXITY = 100;
 

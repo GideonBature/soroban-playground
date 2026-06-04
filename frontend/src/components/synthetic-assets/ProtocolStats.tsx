@@ -23,19 +23,19 @@ const ProtocolStats: React.FC<ProtocolStatsProps> = ({ params }) => {
     <div className="protocol-stats">
       <div className="stat-item">
         <label>Min Collateral Ratio</label>
-        <value>{(params.minCollateralRatio / 100).toFixed(1)}%</value>
+        <span>{(params.minCollateralRatio / 100).toFixed(1)}%</span>
       </div>
       <div className="stat-item">
         <label>Liquidation Threshold</label>
-        <value>{(params.liquidationThreshold / 100).toFixed(1)}%</value>
+        <span>{(params.liquidationThreshold / 100).toFixed(1)}%</span>
       </div>
       <div className="stat-item">
         <label>Liquidation Bonus</label>
-        <value>{(params.liquidationBonus / 100).toFixed(2)}%</value>
+        <span>{(params.liquidationBonus / 100).toFixed(2)}%</span>
       </div>
       <div className="stat-item">
         <label>Trading Fee</label>
-        <value>{(params.feePercentage / 100).toFixed(2)}%</value>
+        <span>{(params.feePercentage / 100).toFixed(2)}%</span>
       </div>
     </div>
   );

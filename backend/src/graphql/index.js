@@ -2,7 +2,9 @@
 // Includes: DataLoader per-request, query complexity analysis, field-level auth,
 // Redis-backed caching, GraphiQL playground, and subscription support.
 
-import { createYoga, createSchema } from 'graphql-yoga';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { createYoga, createSchema } = require('graphql-yoga');
 import { typeDefs } from './schema.js';
 import { resolvers } from './resolvers.js';
 import { createLoaders } from './dataloaders.js';
@@ -18,7 +20,10 @@ const schema = createSchema({ typeDefs, resolvers });
  */
 function buildUserContext(request) {
   const role = request.headers.get('x-role') ?? 'guest';
-  const token = (request.headers.get('authorization') ?? '').replace('Bearer ', '');
+  const token = (request.headers.get('authorization') ?? '').replace(
+    'Bearer ',
+    ''
+  );
   return {
     roles: role ? [role] : ['guest'],
     token,
@@ -52,7 +57,11 @@ query Health {
       {
         onExecute({ args }) {
           try {
-            const score = analyzeComplexity(args.schema, args.document, args.variableValues);
+            const score = analyzeComplexity(
+              args.schema,
+              args.document,
+              args.variableValues
+            );
             // Attach score to extensions so clients can see it
             args.contextValue._complexityScore = score;
           } catch (err) {
@@ -89,4 +98,9 @@ query Health {
   });
 
   return yoga;
+}
+
+export function setupGraphQL(app) {
+  const yoga = createGraphQLServer();
+  app.use(yoga.graphqlEndpoint, yoga);
 }

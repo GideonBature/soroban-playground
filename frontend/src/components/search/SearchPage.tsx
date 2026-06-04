@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import SearchInput from './SearchInput';
@@ -24,7 +25,7 @@ const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [filters, setFilters] = useState<SearchFiltersState>({});
-  const [facetCounts, setFacetCounts] = useState<FacetCounts>({});
+  const [facetCounts, setFacetCounts] = useState<FacetCounts | undefined>(undefined);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
     limit: 20,
@@ -33,7 +34,7 @@ const SearchPage: React.FC = () => {
     hasNext: false,
     hasPrev: false
   });
-  const [meta, setMeta] = useState<SearchMeta | null>(null);
+  const [meta, setMeta] = useState<SearchMeta | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFacets, setIsLoadingFacets] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');

@@ -1,11 +1,4 @@
-import dynamic from "next/dynamic";
-
-// The panel opens a WebSocket and uses browser-only APIs, so render
-// client-side only. SSR would just produce a placeholder anyway.
-const OracleStatusPanel = dynamic(
-  () => import("@/components/OracleStatusPanel").then((m) => m.OracleStatusPanel),
-  { ssr: false, loading: () => <div className="p-6 text-gray-500">Loading oracle network…</div> }
-);
+import OracleStatusPanelClient from "./OracleStatusPanelClient";
 
 export const metadata = {
   title: "Oracle Network | Soroban Playground",
@@ -14,5 +7,5 @@ export const metadata = {
 };
 
 export default function OraclePage() {
-  return <OracleStatusPanel />;
+  return <OracleStatusPanelClient />;
 }

@@ -18,6 +18,7 @@ export const typeDefs = /* GraphQL */ `
     name: String!
     sizeBytes: Int!
     path: String!
+    durationMs: Int
   }
 
   type CompileResult {
@@ -31,11 +32,17 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type CompileStats {
+    activeWorkers: Int!
+    maxWorkers: Int!
+    queueLength: Int!
+    estimatedWaitTimeMs: Int!
+    cacheHitRate: Float!
     totalCompiles: Int!
     cacheHits: Int!
     slowCompiles: Int!
-    activeWorkers: Int!
-    queueLength: Int!
+    memoryPeakBytes: Float!
+    cacheBytes: Float!
+    artifactsCount: Int!
   }
 
   type CompileEdge {
@@ -51,11 +58,12 @@ export const typeDefs = /* GraphQL */ `
 
   type CompileHistoryItem {
     id: String!
+    requestId: String!
     hash: String!
-    status: String!
-    durationMs: Int
-    cachedAt: String
-    createdAt: String!
+    cached: Boolean!
+    durationMs: Int!
+    timestamp: String!
+    artifact: CompileArtifact
   }
 
   # ── Deploy ────────────────────────────────────────────────────────────────────
@@ -174,13 +182,15 @@ export const typeDefs = /* GraphQL */ `
   type Query {
     # Compile
     compileStats: CompileStats! @complexity(value: 1)
-    compileHistory(first: Int, after: String): CompileHistoryConnection! @complexity(value: 3, multipliers: ["first"])
+    compileHistory: [CompileHistoryItem!]! @complexity(value: 3)
 
     # Deploy
-    deployHistory(first: Int, after: String): DeployHistoryConnection! @complexity(value: 3, multipliers: ["first"])
+    deployHistory(first: Int, after: String): DeployHistoryConnection!
+      @complexity(value: 3, multipliers: ["first"])
 
     # Invoke — admin only
-    invokeLog(contractId: String!, first: Int, after: String): JSON @complexity(value: 5)
+    invokeLog(contractId: String!, first: Int, after: String): JSON
+      @complexity(value: 5)
 
     # Health
     health: String! @complexity(value: 1)

@@ -5,6 +5,9 @@
   "author": "Ayomide (Maintainer) & Open Source Contributors",
   "license": "MIT",
   "private": true,
+  "overrides": {
+    "graphql": "^16.13.2"
+  },
   "workspaces": [
     "frontend",
     "backend"
@@ -13,6 +16,7 @@
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:check": "npm run lint:check --workspaces --if-present"
   }
 }

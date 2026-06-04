@@ -42,15 +42,15 @@ const AssetOverview: React.FC<AssetOverviewProps> = ({ asset, price }) => {
       <div className="metrics-grid">
         <div className="metric">
           <label>Total Supply</label>
-          <value>{formattedSupply.toFixed(2)}</value>
+          <span>{formattedSupply.toFixed(2)}</span>
         </div>
         <div className="metric">
           <label>Decimals</label>
-          <value>{asset.decimals}</value>
+          <span>{asset.decimals}</span>
         </div>
         <div className="metric">
           <label>Last Updated</label>
-          <value>{new Date().toLocaleTimeString()}</value>
+          <span>{new Date().toLocaleTimeString()}</span>
         </div>
       </div>
 
