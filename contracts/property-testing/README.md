@@ -1,80 +1,143 @@
-# Property-Based Testing Utilities for Soroban Contracts
+# Property-Based Testing Utilities for Soroban
 
-A comprehensive set of property-based testing utilities for Soroban smart contracts, including:
-- **PropertyTester**: Secure wrapper for property-based contract testing
-- **InvariantChecker**: Utility for checking contract invariants during testing
-- **BoundaryTester**: Utility for testing contract boundary conditions
-- **FuzzGenerator**: Utility for generating fuzz test inputs
-- **PropertyValidator**: Utility for validating contract properties and behaviors
+This package provides reusable, gas‑efficient utilities to test Soroban smart contracts using property‑based, invariant, boundary, and fuzz testing techniques.
 
-## Features
 
-- Soroban-optimized property-based testing patterns
-- Comprehensive security validation (property validation, invariant checking)
-- Gas-efficient operations
-- Comprehensive test coverage
-- Documentation and usage examples
+## What is Property-Based Testing in Soroban?
 
-## Installation
+Property‑based testing validates that a contract behaves correctly for a wide range of inputs, not just a small set of hand‑picked test cases. Instead of writing individual tests, you define properties (invariants) that must always hold true, then provide a collection of inputs to verify them.
 
-Add to your Soroban project's Cargo.toml as a dependency.
 
-## Usage
+## Utilities Overview
 
-### Initialization
+### 1. PropertyTester
+Executes property tests against multiple inputs, tracking failures and iteration counts.
 
+#### Example Usage
 ```rust
-use property_testing::PropertyTestingUtilsClient;
-use soroban_sdk::{Env, Address, testutils::Address as _};
+use soroban_sdk::{Env, String, Vec};
+use property_testing::{PropertyTester, PropertyTestResult};
 
 let env = Env::default();
-let contract_id = env.register(PropertyTestingUtils, ());
-let client = PropertyTestingUtilsClient::new(&env, &contract_id);
+let tester = PropertyTester::new(&env);
 
-let admin = Address::generate(&env);
-client.initialize(&admin);
+let mut inputs = Vec::new(&env);
+inputs.push_back(1);
+inputs.push_back(2);
+inputs.push_back(3);
+
+let result: PropertyTestResult = tester.test(inputs, |&x| {
+    if x > 0 {
+        Ok(())
+    } else {
+        Err(String::from_str(&env, "not positive"))
+    }
+});
+
+assert!(result.passed);
 ```
 
-### PropertyTester
 
+### 2. InvariantChecker
+Maintains and checks a collection of invariants (conditions that must always be true) during state transitions.
+
+#### Example Usage
 ```rust
-client.run_property(
-    &String::from_str(&env, "test_commutativity"),
-    &100,
-    &true,
-);
+use soroban_sdk::{Env, String};
+use property_testing::InvariantChecker;
+
+let env = Env::default();
+let mut checker = InvariantChecker::new(&env);
+
+checker.add_invariant("always positive", || {
+    // Check some state here
+    Ok(())
+});
+checker.add_invariant("balance valid", || {
+    // Another invariant
+    Ok(())
+});
+
+assert!(checker.check_all().is_ok());
 ```
 
-### InvariantChecker
 
+### 3. BoundaryTester
+Explicitly tests boundary conditions, overflows, underflows, and edge‑case values.
+
+#### Example Usage
 ```rust
-client.check_invariant(
-    &String::from_str(&env, "balance_non_negative"),
-    &true,
-);
+use soroban_sdk::{Env, String};
+use property_testing::BoundaryTester;
+
+let env = Env::default();
+let tester = BoundaryTester::new(&env);
+
+// Test i128 boundaries
+let results = tester.test_i128_boundaries(|x| {
+    if x < 0 {
+        Err(String::from_str(&env, "negative value"))
+    } else {
+        Ok(())
+    }
+});
+
+// Use checked arithmetic
+let sum = tester.checked_add_i128(100, 200).unwrap();
 ```
 
-### BoundaryTester
 
+### 4. FuzzGenerator
+Generates pseudo‑random test inputs of common Soroban types, using a deterministic seed for reproducibility.
+
+#### Example Usage
 ```rust
-let boundaries = client.test_u32_boundaries(&42);
+use soroban_sdk::Env;
+use property_testing::FuzzGenerator;
+
+let env = Env::default();
+let mut gen = FuzzGenerator::new(&env, 12345);
+
+let random_u64 = gen.gen_u64();
+let random_bool = gen.gen_bool();
+let random_address = gen.gen_address();
+let random_string = gen.gen_string(5, 15);
+let random_vec = gen.gen_vec_u64(2, 10);
 ```
 
-### FuzzGenerator
 
+### 5. PropertyValidator
+Provides simple, reusable assertions for validating runtime contract behaviors.
+
+#### Example Usage
 ```rust
-let fuzz_values = client.generate_u32s(&100, &12345);
+use soroban_sdk::{Env, String, Vec};
+use property_testing::PropertyValidator;
+
+let env = Env::default();
+let validator = PropertyValidator::new(&env);
+
+validator.assert_true(5 > 3, "5 should be bigger")?;
+validator.assert_eq(2 + 2, 4, "addition is wrong")?;
+
+let mut validations = Vec::new(&env);
+validations.push_back(validator.assert_lt(10, 20, "lt failed"));
+validations.push_back(validator.assert_ge(100, 0, "ge failed"));
+assert!(validator.validate_all(validations).is_ok());
 ```
 
-### PropertyValidator
 
-```rust
-client.validate_range(&50, &0, &100, &String::from_str(&env, "in_range"));
+## Setup & Execution Instructions
+
+### Installation
+The package is already set up as part of the Soroban playground workspace. Just include it in your contract's Cargo.toml (for testing):
+```toml
+[dev-dependencies]
+property-testing = { path = "../property-testing" }
 ```
 
-## Testing
-
-Run tests with:
+### Running Tests
+To run the test suite:
 ```bash
 cd contracts/property-testing
 cargo test

@@ -1,293 +1,342 @@
-//! # Property-Based Testing Utilities Contract
-//!
-//! Comprehensive set of property-based testing utilities for Soroban smart contracts:
-//! - PropertyTester: Secure wrapper for property-based contract testing
-//! - InvariantChecker: Utility for checking contract invariants during testing
-//! - BoundaryTester: Utility for testing contract boundary conditions
-//! - FuzzGenerator: Utility for generating fuzz test inputs
-//! - PropertyValidator: Utility for validating contract properties and behaviors
 
 #![no_std]
 
-mod test;
+use soroban_sdk::{Address, Env, String, Vec, U256, U128, I128};
 
-use soroban_sdk::{
-    contract, contracterror, contractimpl, symbol_short, Address, Env, String, Val, Vec, Map, Symbol,
-};
-
-const ADMIN: Symbol = symbol_short!("ADMIN");
-const PROPERTY_RESULTS: Symbol = symbol_short!("PRESULTS");
-const INVARIANT_RESULTS: Symbol = symbol_short!("IRESULTS");
-const MAX_PROPERTY_RUNS: u32 = 1000;
-const MAX_INVARIANT_CHECKS: u32 = 500;
-const MAX_GENERATED_VALUES: u32 = 1000;
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum Error {
-    Unauthorized = 1,
-    InvalidInput = 2,
-    NotFound = 3,
-    CapExceeded = 4,
-    PropertyFailed = 5,
-    InvariantViolated = 6,
+/// Result for property test execution
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyTestResult {
+    pub passed: bool,
+    pub iterations: u64,
+    pub failures: Vec<String>,
 }
 
-fn get_admin(env: &Env) -> Result<Address, Error> {
-    env.instance().get(&ADMIN).ok_or(Error::Unauthorized)
+/// PropertyTester - executes property tests with multiple inputs
+pub struct PropertyTester<'a> {
+    env: &'a Env,
 }
 
-fn set_admin(env: &Env, admin: &Address) {
-    env.instance().set(&ADMIN, admin);
-}
-
-fn ensure_initialized(env: &Env) -> Result<(), Error> {
-    if !env.instance().has::<Address>(&ADMIN) {
-        return Err(Error::NotFound);
-    }
-    Ok(())
-}
-
-fn u32_to_string(env: &Env, n: u32) -> String {
-    if n == 0 {
-        return String::from_str(env, "0");
-    }
-    let mut bytes: Vec<u8> = Vec::new(env);
-    let mut m = n;
-    while m > 0 {
-        bytes.insert(0, b'0' + (m % 10) as u8);
-        m /= 10;
-    }
-    String::from_bytes(env, &bytes)
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[repr(u32)]
-pub enum PropertyStatus {
-    Passed = 0,
-    Failed = 1,
-    Skipped = 2,
-}
-
-#[contract]
-pub struct PropertyTestingUtils;
-
-#[contractimpl]
-impl PropertyTestingUtils {
-    pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
-        if env.instance().has::<Address>(&ADMIN) {
-            return Err(Error::CapExceeded);
-        }
-        admin.require_auth();
-        set_admin(&env, &admin);
-        env.instance().set(&PROPERTY_RESULTS, &Vec::<String>::new(&env));
-        env.instance().set(&INVARIANT_RESULTS, &Vec::<String>::new(&env));
-        Ok(())
+impl<'a> PropertyTester<'a> {
+    pub fn new(env: &'a Env) -> Self {
+        Self { env }
     }
 
-    // ── PropertyTester ────────────────────────────────────────────────────────────
+    pub fn test<F, I>(&self, inputs: Vec<I>, property: F) -> PropertyTestResult
+    where
+        F: Fn(&I) -> Result<(), String>,
+    {
+        let mut failures = Vec::new(self.env);
+        let mut count = 0u64;
 
-    pub fn run_property(env: Env, property_name: String, runs: u32, should_pass: bool) -> Result<PropertyStatus, Error> {
-        ensure_initialized(&env)?;
-        if property_name.is_empty() || runs == 0 || runs > MAX_PROPERTY_RUNS {
-            return Err(Error::InvalidInput);
-        }
-        
-        let status = if should_pass {
-            PropertyStatus::Passed
-        } else {
-            PropertyStatus::Failed
-        };
-        
-        let mut results: Vec<String> = env.instance().get(&PROPERTY_RESULTS).unwrap_or_else(|| Vec::<String>::new(&env));
-        let result_str = String::from_str(
-            &env,
-            &format!("{}: {:?} ({} runs)", property_name, status, runs),
-        );
-        results.push_back(result_str);
-        env.instance().set(&PROPERTY_RESULTS, &results);
-        
-        env.events().publish(
-            (symbol_short!("PropertyTested"), property_name.clone()),
-            (status as u32, runs),
-        );
-        
-        if status == PropertyStatus::Failed {
-            return Err(Error::PropertyFailed);
-        }
-        
-        Ok(status)
-    }
-
-    pub fn get_property_results(env: Env) -> Result<Vec<String>, Error> {
-        ensure_initialized(&env)?;
-        Ok(env.instance().get(&PROPERTY_RESULTS).unwrap_or_else(|| Vec::<String>::new(&env)))
-    }
-
-    pub fn clear_property_results(env: Env) -> Result<(), Error> {
-        ensure_initialized(&env)?;
-        env.instance().set(&PROPERTY_RESULTS, &Vec::<String>::new(&env));
-        Ok(())
-    }
-
-    // ── InvariantChecker ─────────────────────────────────────────────────────────
-
-    pub fn check_invariant(env: Env, invariant_name: String, holds: bool) -> Result<bool, Error> {
-        ensure_initialized(&env)?;
-        if invariant_name.is_empty() {
-            return Err(Error::InvalidInput);
-        }
-        
-        let mut results: Vec<String> = env.instance().get(&INVARIANT_RESULTS).unwrap_or_else(|| Vec::<String>::new(&env));
-        let result_str = if holds {
-            String::from_str(&env, &format!("{}: holds", invariant_name))
-        } else {
-            String::from_str(&env, &format!("{}: violated", invariant_name))
-        };
-        results.push_back(result_str);
-        if results.len() > MAX_INVARIANT_CHECKS as usize {
-            results.remove(0);
-        }
-        env.instance().set(&INVARIANT_RESULTS, &results);
-        
-        env.events().publish(
-            (symbol_short!("InvariantChecked"), invariant_name),
-            holds,
-        );
-        
-        if !holds {
-            return Err(Error::InvariantViolated);
-        }
-        
-        Ok(true)
-    }
-
-    pub fn get_invariant_results(env: Env) -> Result<Vec<String>, Error> {
-        ensure_initialized(&env)?;
-        Ok(env.instance().get(&INVARIANT_RESULTS).unwrap_or_else(|| Vec::<String>::new(&env)))
-    }
-
-    pub fn clear_invariant_results(env: Env) -> Result<(), Error> {
-        ensure_initialized(&env)?;
-        env.instance().set(&INVARIANT_RESULTS, &Vec::<String>::new(&env));
-        Ok(())
-    }
-
-    // ── BoundaryTester ────────────────────────────────────────────────────────────
-
-    pub fn test_u32_boundaries(env: Env, value: u32) -> Result<Vec<u32>, Error> {
-        let mut boundaries: Vec<u32> = Vec::new(&env);
-        boundaries.push_back(0);
-        boundaries.push_back(1);
-        boundaries.push_back(u32::MAX - 1);
-        boundaries.push_back(u32::MAX);
-        boundaries.push_back(value);
-        Ok(boundaries)
-    }
-
-    pub fn test_i32_boundaries(env: Env, value: i32) -> Result<Vec<i32>, Error> {
-        let mut boundaries: Vec<i32> = Vec::new(&env);
-        boundaries.push_back(i32::MIN);
-        boundaries.push_back(i32::MIN + 1);
-        boundaries.push_back(-1);
-        boundaries.push_back(0);
-        boundaries.push_back(1);
-        boundaries.push_back(i32::MAX - 1);
-        boundaries.push_back(i32::MAX);
-        boundaries.push_back(value);
-        Ok(boundaries)
-    }
-
-    pub fn test_string_lengths(env: Env, base: String, max_len: u32) -> Result<Vec<String>, Error> {
-        if max_len > 1024 {
-            return Err(Error::InvalidInput);
-        }
-        let mut lengths: Vec<String> = Vec::new(&env);
-        lengths.push_back(String::from_str(&env, ""));
-        lengths.push_back(String::from_str(&env, "a"));
-        if !base.is_empty() {
-            lengths.push_back(base.clone());
-        }
-        Ok(lengths)
-    }
-
-    // ── FuzzGenerator ─────────────────────────────────────────────────────────────
-
-    pub fn generate_u32s(env: Env, count: u32, seed: u32) -> Result<Vec<u32>, Error> {
-        if count == 0 || count > MAX_GENERATED_VALUES {
-            return Err(Error::InvalidInput);
-        }
-        let mut values: Vec<u32> = Vec::new(&env);
-        let mut current = seed;
-        for _ in 0..count {
-            current = current.wrapping_mul(1103515245).wrapping_add(12345);
-            values.push_back(current);
-        }
-        Ok(values)
-    }
-
-    pub fn generate_i32s(env: Env, count: u32, seed: u32) -> Result<Vec<i32>, Error> {
-        if count == 0 || count > MAX_GENERATED_VALUES {
-            return Err(Error::InvalidInput);
-        }
-        let mut values: Vec<i32> = Vec::new(&env);
-        let mut current = seed;
-        for _ in 0..count {
-            current = current.wrapping_mul(1103515245).wrapping_add(12345);
-            values.push_back(current as i32);
-        }
-        Ok(values)
-    }
-
-    pub fn generate_strings(env: Env, count: u32, seed: u32, max_len: u32) -> Result<Vec<String>, Error> {
-        if count == 0 || count > MAX_GENERATED_VALUES || max_len > 1024 {
-            return Err(Error::InvalidInput);
-        }
-        let mut strings: Vec<String> = Vec::new(&env);
-        let mut current = seed;
-        for _ in 0..count {
-            let mut bytes: Vec<u8> = Vec::new(&env);
-            let len = (current % max_len) as usize;
-            for _ in 0..len {
-                current = current.wrapping_mul(1103515245).wrapping_add(12345);
-                let c = (current % 26) as u8 + b'a';
-                bytes.push_back(c);
+        for input in inputs.iter() {
+            count += 1;
+            if let Err(e) = property(input) {
+                failures.push_back(e);
             }
-            strings.push_back(String::from_bytes(&env, &bytes));
         }
-        Ok(strings)
+
+        PropertyTestResult {
+            passed: failures.is_empty(),
+            iterations: count,
+            failures,
+        }
     }
 
-    // ── PropertyValidator ─────────────────────────────────────────────────────────
+    pub fn test_with_limit<F, I>(&self, inputs: Vec<I>, limit: u64, property: F) -> PropertyTestResult
+    where
+        F: Fn(&I) -> Result<(), String>,
+    {
+        let mut failures = Vec::new(self.env);
+        let mut count = 0u64;
 
-    pub fn validate_equality(env: Env, a: Val, b: Val, property_name: String) -> Result<bool, Error> {
-        ensure_initialized(&env)?;
-        let equal = a == b;
-        env.events().publish(
-            (symbol_short!("EqualityValidated"), property_name),
-            equal,
-        );
-        Ok(equal)
-    }
+        for input in inputs.iter() {
+            if count >= limit {
+                break;
+            }
+            count += 1;
+            if let Err(e) = property(input) {
+                failures.push_back(e);
+            }
+        }
 
-    pub fn validate_range(env: Env, value: u32, min: u32, max: u32, property_name: String) -> Result<bool, Error> {
-        ensure_initialized(&env)?;
-        let in_range = value >= min && value <= max;
-        env.events().publish(
-            (symbol_short!("RangeValidated"), property_name),
-            in_range,
-        );
-        Ok(in_range)
-    }
-
-    pub fn validate_non_zero(env: Env, value: u32, property_name: String) -> Result<bool, Error> {
-        ensure_initialized(&env)?;
-        let non_zero = value != 0;
-        env.events().publish(
-            (symbol_short!("NonZeroValidated"), property_name),
-            non_zero,
-        );
-        Ok(non_zero)
+        PropertyTestResult {
+            passed: failures.is_empty(),
+            iterations: count,
+            failures,
+        }
     }
 }
+
+/// InvariantChecker - tracks and verifies state invariants
+pub struct InvariantChecker<'a> {
+    env: &'a Env,
+    invariants: Vec<(&'static str, Box<dyn Fn() -> Result<(), String> + 'a>)>,
+}
+
+impl<'a> InvariantChecker<'a> {
+    pub fn new(env: &'a Env) -> Self {
+        Self {
+            env,
+            invariants: Vec::new(env),
+        }
+    }
+
+    pub fn add_invariant<F>(&mut self, name: &'static str, invariant: F)
+    where
+        F: Fn() -> Result<(), String> + 'a,
+    {
+        self.invariants.push_back((name, Box::new(invariant)));
+    }
+
+    pub fn check_all(&self) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new(self.env);
+
+        for (name, inv) in self.invariants.iter() {
+            if let Err(e) = inv() {
+                errors.push_back(String::from_str(self.env, &format!("{}: {}", name, e)));
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    pub fn check_one(&self, name: &str) -> Result<(), String> {
+        for (inv_name, inv) in self.invariants.iter() {
+            if *inv_name == name {
+                return inv();
+            }
+        }
+        Err(String::from_str(self.env, "invariant not found"))
+    }
+}
+
+/// BoundaryTester - tests boundary conditions and overflow/underflow
+pub struct BoundaryTester<'a> {
+    env: &'a Env,
+}
+
+impl<'a> BoundaryTester<'a> {
+    pub fn new(env: &'a Env) -> Self {
+        Self { env }
+    }
+
+    pub fn test_i128_boundaries<F>(&self, f: F) -> Vec<(i128, Result<(), String>)>
+    where
+        F: Fn(i128) -> Result<(), String>,
+    {
+        let mut results = Vec::new(self.env);
+        let test_values = [
+            i128::MIN,
+            i128::MIN + 1,
+            -1000,
+            -1,
+            0,
+            1,
+            1000,
+            i128::MAX - 1,
+            i128::MAX,
+        ];
+
+        for &v in &test_values {
+            results.push_back((v, f(v)));
+        }
+
+        results
+    }
+
+    pub fn test_u128_boundaries<F>(&self, f: F) -> Vec<(u128, Result<(), String>)>
+    where
+        F: Fn(u128) -> Result<(), String>,
+    {
+        let mut results = Vec::new(self.env);
+        let test_values = [
+            u128::MIN,
+            1,
+            1000,
+            u128::MAX / 2,
+            u128::MAX - 1,
+            u128::MAX,
+        ];
+
+        for &v in &test_values {
+            results.push_back((v, f(v)));
+        }
+
+        results
+    }
+
+    pub fn checked_add_i128(&self, a: i128, b: i128) -> Result<i128, String> {
+        a.checked_add(b).ok_or_else(|| String::from_str(self.env, "overflow/underflow"))
+    }
+
+    pub fn checked_sub_i128(&self, a: i128, b: i128) -> Result<i128, String> {
+        a.checked_sub(b).ok_or_else(|| String::from_str(self.env, "overflow/underflow"))
+    }
+
+    pub fn checked_mul_i128(&self, a: i128, b: i128) -> Result<i128, String> {
+        a.checked_mul(b).ok_or_else(|| String::from_str(self.env, "overflow/underflow"))
+    }
+
+    pub fn is_in_range_i128(&self, value: i128, min: i128, max: i128) -> bool {
+        value >= min && value <= max
+    }
+
+    pub fn is_in_range_u128(&self, value: u128, min: u128, max: u128) -> bool {
+        value >= min && value <= max
+    }
+}
+
+/// FuzzGenerator - generates test inputs for Soroban types
+pub struct FuzzGenerator<'a> {
+    env: &'a Env,
+    seed: u64,
+}
+
+impl<'a> FuzzGenerator<'a> {
+    pub fn new(env: &'a Env, seed: u64) -> Self {
+        Self { env, seed }
+    }
+
+    fn next_seed(&mut self) -> u64 {
+        self.seed = self.seed.wrapping_mul(1103515245).wrapping_add(12345);
+        self.seed
+    }
+
+    pub fn gen_u64(&mut self) -> u64 {
+        self.next_seed()
+    }
+
+    pub fn gen_u64_range(&mut self, min: u64, max: u64) -> u64 {
+        let range = max - min + 1;
+        (self.gen_u64() % range) + min
+    }
+
+    pub fn gen_i64(&mut self) -> i64 {
+        self.gen_u64() as i64
+    }
+
+    pub fn gen_i64_range(&mut self, min: i64, max: i64) -> i64 {
+        let range = (max - min) as u64 + 1;
+        (self.gen_u64() % range) as i64 + min
+    }
+
+    pub fn gen_u128(&mut self) -> u128 {
+        let a = self.gen_u64() as u128;
+        let b = self.gen_u64() as u128;
+        (a << 64) | b
+    }
+
+    pub fn gen_i128(&mut self) -> i128 {
+        self.gen_u128() as i128
+    }
+
+    pub fn gen_bool(&mut self) -> bool {
+        self.gen_u64() % 2 == 0
+    }
+
+    pub fn gen_address(&mut self) -> Address {
+        Address::generate(self.env)
+    }
+
+    pub fn gen_string(&mut self, len_min: u64, len_max: u64) -> String {
+        let len = self.gen_u64_range(len_min, len_max) as usize;
+        let mut chars = Vec::new(self.env);
+        let charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+        for _ in 0..len {
+            let idx = self.gen_u64_range(0, charset.len() as u64 - 1) as usize;
+            chars.push_back(charset.as_bytes()[idx] as char);
+        }
+
+        String::from_chars(self.env, chars.iter())
+    }
+
+    pub fn gen_vec_u64(&mut self, len_min: u64, len_max: u64) -> Vec<u64> {
+        let len = self.gen_u64_range(len_min, len_max);
+        let mut vec = Vec::new(self.env);
+        for _ in 0..len {
+            vec.push_back(self.gen_u64());
+        }
+        vec
+    }
+
+    pub fn take_n<T, F>(&mut self, n: u64, gen: F) -> Vec<T>
+    where
+        F: Fn(&mut Self) -> T,
+    {
+        let mut vec = Vec::new(self.env);
+        for _ in 0..n {
+            vec.push_back(gen(self));
+        }
+        vec
+    }
+}
+
+/// PropertyValidator - validates runtime behaviors against conditions
+pub struct PropertyValidator<'a> {
+    env: &'a Env,
+}
+
+impl<'a> PropertyValidator<'a> {
+    pub fn new(env: &'a Env) -> Self {
+        Self { env }
+    }
+
+    pub fn assert_true(&self, condition: bool, message: &str) -> Result<(), String> {
+        if condition {
+            Ok(())
+        } else {
+            Err(String::from_str(self.env, message))
+        }
+    }
+
+    pub fn assert_false(&self, condition: bool, message: &str) -> Result<(), String> {
+        self.assert_true(!condition, message)
+    }
+
+    pub fn assert_eq<T: PartialEq>(&self, a: T, b: T, message: &str) -> Result<(), String> {
+        self.assert_true(a == b, message)
+    }
+
+    pub fn assert_ne<T: PartialEq>(&self, a: T, b: T, message: &str) -> Result<(), String> {
+        self.assert_true(a != b, message)
+    }
+
+    pub fn assert_lt<T: PartialOrd>(&self, a: T, b: T, message: &str) -> Result<(), String> {
+        self.assert_true(a < b, message)
+    }
+
+    pub fn assert_le<T: PartialOrd>(&self, a: T, b: T, message: &str) -> Result<(), String> {
+        self.assert_true(a <= b, message)
+    }
+
+    pub fn assert_gt<T: PartialOrd>(&self, a: T, b: T, message: &str) -> Result<(), String> {
+        self.assert_true(a > b, message)
+    }
+
+    pub fn assert_ge<T: PartialOrd>(&self, a: T, b: T, message: &str) -> Result<(), String> {
+        self.assert_true(a >= b, message)
+    }
+
+    pub fn validate_all(&self, validations: Vec<Result<(), String>>) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new(self.env);
+        for v in validations.iter() {
+            if let Err(e) = v {
+                errors.push_back(e.clone());
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+#[cfg(test)]
+mod test;
