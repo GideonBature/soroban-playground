@@ -1,80 +1,77 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Search, X } from "lucide-react";
 
 interface TemplateSearchBarProps {
   value: string;
   onChange: (value: string) => void;
-  resultCount: number;
+  placeholder?: string;
 }
 
 export default function TemplateSearchBar({
   value,
   onChange,
-  resultCount,
+  placeholder = "Search templates by name, description, or keyword…",
 }: TemplateSearchBarProps) {
-  const [localValue, setLocalValue] = useState(value);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
 
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  const handleChange = (next: string) => {
-    setLocalValue(next);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      onChange(next);
-    }, 200);
+  // Debounce: emit changes immediately (parent handles debounce if needed)
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
   };
 
   const handleClear = () => {
-    setLocalValue("");
-    if (debounceRef.current) clearTimeout(debounceRef.current);
     onChange("");
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onChange("");
+      inputRef.current?.blur();
+    }
   };
 
   return (
-    <div className="space-y-2">
-      <div className="relative">
-        <label
-          htmlFor="template-search"
-          className="sr-only"
-        >
-          Search templates
-        </label>
+    <div className="relative w-full">
+      <div
+        className={`flex items-center gap-2 rounded-xl border px-4 py-3 transition-all ${
+          focused
+            ? "border-teal-500/50 bg-slate-900 shadow-[0_0_0_3px_rgba(45,212,191,0.1)]"
+            : "border-slate-700/60 bg-slate-900/60"
+        }`}
+      >
         <Search
-          size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+          className={`shrink-0 transition-colors ${focused ? "text-teal-400" : "text-slate-500"}`}
+          size={18}
         />
         <input
-          id="template-search"
+          ref={inputRef}
           type="text"
-          value={localValue}
-          onChange={(e) => handleChange(e.target.value)}
-          placeholder="Search templates by name, category, or keywords..."
-          aria-label="Search contract templates"
-          className="w-full rounded-xl border border-slate-800 bg-slate-900/60 pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20"
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          className="flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-500 outline-none"
+          autoComplete="off"
+          spellCheck={false}
+          aria-label="Search templates"
         />
-        {localValue && (
+        {value && (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded text-slate-500 hover:text-slate-300 transition-colors"
+            className="shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
             aria-label="Clear search"
           >
             <X size={16} />
           </button>
         )}
       </div>
-      <p
-        className="text-xs text-slate-500"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {resultCount} {resultCount === 1 ? "template" : "templates"} found
-      </p>
     </div>
   );
 }

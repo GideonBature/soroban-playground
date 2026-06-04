@@ -71,6 +71,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
         { name: "Storage Browser", href: "/storage-browser", icon: Database },
         { name: "Docs & Reference", href: "/docs", icon: BookOpen },
         { name: "Audit Explorer", href: "/audit", icon: Shield },
+        { name: "Template Library", href: "/template-library", icon: BookOpen },
         { name: "Search Utility", href: "/search", icon: Search },
         { name: "Template Library", href: "/template-library", icon: Library },
         { name: "Ledger Migration", href: "/migration", icon: Send },
