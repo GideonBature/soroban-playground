@@ -3739,6 +3739,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "weather-data-oracle"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "web-sys"
 version = "0.3.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
