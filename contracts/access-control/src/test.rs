@@ -5,8 +5,8 @@
 
 use soroban_sdk::{testutils::Address as _, Address, Env};
 
-use crate::{AccessControl, AccessControlClient, Error};
 use crate::types::Role;
+use crate::{AccessControl, AccessControlClient, Error};
 
 fn setup() -> (Env, Address, AccessControlClient<'static>) {
     let env = Env::default();
@@ -56,7 +56,9 @@ fn test_pauser_role_can_pause() {
     let (env, owner, client) = setup();
     client.try_initialize(&owner).unwrap();
     let pauser = Address::generate(&env);
-    client.try_grant_role(&owner, &pauser, &(Role::Pauser as u32)).unwrap();
+    client
+        .try_grant_role(&owner, &pauser, &(Role::Pauser as u32))
+        .unwrap();
     client.try_pause(&pauser).unwrap();
     assert!(client.is_paused());
 }
@@ -80,7 +82,9 @@ fn test_grant_role_ok() {
     client.try_initialize(&owner).unwrap();
     let minter = Address::generate(&env);
     assert!(!client.has_role(&minter, &(Role::Minter as u32)));
-    client.try_grant_role(&owner, &minter, &(Role::Minter as u32)).unwrap();
+    client
+        .try_grant_role(&owner, &minter, &(Role::Minter as u32))
+        .unwrap();
     assert!(client.has_role(&minter, &(Role::Minter as u32)));
 }
 
@@ -89,9 +93,14 @@ fn test_grant_role_twice_fails() {
     let (env, owner, client) = setup();
     client.try_initialize(&owner).unwrap();
     let minter = Address::generate(&env);
-    client.try_grant_role(&owner, &minter, &(Role::Minter as u32)).unwrap();
+    client
+        .try_grant_role(&owner, &minter, &(Role::Minter as u32))
+        .unwrap();
     assert_eq!(
-        client.try_grant_role(&owner, &minter, &(Role::Minter as u32)).unwrap_err().unwrap(),
+        client
+            .try_grant_role(&owner, &minter, &(Role::Minter as u32))
+            .unwrap_err()
+            .unwrap(),
         Error::RoleAlreadyGranted
     );
 }
@@ -101,8 +110,12 @@ fn test_revoke_role_ok() {
     let (env, owner, client) = setup();
     client.try_initialize(&owner).unwrap();
     let minter = Address::generate(&env);
-    client.try_grant_role(&owner, &minter, &(Role::Minter as u32)).unwrap();
-    client.try_revoke_role(&owner, &minter, &(Role::Minter as u32)).unwrap();
+    client
+        .try_grant_role(&owner, &minter, &(Role::Minter as u32))
+        .unwrap();
+    client
+        .try_revoke_role(&owner, &minter, &(Role::Minter as u32))
+        .unwrap();
     assert!(!client.has_role(&minter, &(Role::Minter as u32)));
 }
 
@@ -112,7 +125,10 @@ fn test_revoke_ungranted_role_fails() {
     client.try_initialize(&owner).unwrap();
     let rando = Address::generate(&env);
     assert_eq!(
-        client.try_revoke_role(&owner, &rando, &(Role::Minter as u32)).unwrap_err().unwrap(),
+        client
+            .try_revoke_role(&owner, &rando, &(Role::Minter as u32))
+            .unwrap_err()
+            .unwrap(),
         Error::RoleNotHeld
     );
 }
@@ -124,7 +140,10 @@ fn test_non_admin_cannot_grant_role() {
     let rando = Address::generate(&env);
     let victim = Address::generate(&env);
     assert_eq!(
-        client.try_grant_role(&rando, &victim, &(Role::Minter as u32)).unwrap_err().unwrap(),
+        client
+            .try_grant_role(&rando, &victim, &(Role::Minter as u32))
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -136,7 +155,10 @@ fn test_grant_blocked_when_paused() {
     client.try_pause(&owner).unwrap();
     let minter = Address::generate(&env);
     assert_eq!(
-        client.try_grant_role(&owner, &minter, &(Role::Minter as u32)).unwrap_err().unwrap(),
+        client
+            .try_grant_role(&owner, &minter, &(Role::Minter as u32))
+            .unwrap_err()
+            .unwrap(),
         Error::ContractPaused
     );
 }
@@ -149,10 +171,14 @@ fn test_admin_role_holder_can_grant() {
     client.try_initialize(&owner).unwrap();
     let admin2 = Address::generate(&env);
     // Grant Admin role to admin2
-    client.try_grant_role(&owner, &admin2, &(Role::Admin as u32)).unwrap();
+    client
+        .try_grant_role(&owner, &admin2, &(Role::Admin as u32))
+        .unwrap();
     // admin2 should now be able to grant minter
     let minter = Address::generate(&env);
-    client.try_grant_role(&admin2, &minter, &(Role::Minter as u32)).unwrap();
+    client
+        .try_grant_role(&admin2, &minter, &(Role::Minter as u32))
+        .unwrap();
     assert!(client.has_role(&minter, &(Role::Minter as u32)));
 }
 
@@ -176,7 +202,10 @@ fn test_non_owner_cannot_transfer_ownership() {
     let rando = Address::generate(&env);
     let new_owner = Address::generate(&env);
     assert_eq!(
-        client.try_transfer_ownership(&rando, &new_owner).unwrap_err().unwrap(),
+        client
+            .try_transfer_ownership(&rando, &new_owner)
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -199,7 +228,10 @@ fn test_grant_before_init_fails() {
     let caller = Address::generate(&env);
     let grantee = Address::generate(&env);
     assert_eq!(
-        client.try_grant_role(&caller, &grantee, &0).unwrap_err().unwrap(),
+        client
+            .try_grant_role(&caller, &grantee, &0)
+            .unwrap_err()
+            .unwrap(),
         Error::NotInitialized
     );
 }

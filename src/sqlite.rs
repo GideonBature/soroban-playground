@@ -28,7 +28,7 @@ impl Database for SqliteDatabase {
 
     async fn get_event(&self, id: i64) -> Result<Option<Event>, String> {
         sqlx::query_as::<_, Event>(
-            "SELECT id, contract_id, event_type, ledger, data FROM events WHERE id = ?"
+            "SELECT id, contract_id, event_type, ledger, data FROM events WHERE id = ?",
         )
         .bind(id)
         .fetch_optional(&self.pool)

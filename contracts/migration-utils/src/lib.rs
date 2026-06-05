@@ -33,7 +33,9 @@ mod storage;
 mod test;
 mod types;
 
-use soroban_sdk::{contract, contracterror, contractimpl, symbol_short, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, symbol_short, Address, BytesN, Env, String, Vec,
+};
 
 use crate::storage::{
     get_admin, get_batch_count, get_migration_count, get_rollback_count, get_transfer_count,
@@ -134,7 +136,13 @@ impl MigrationUtils {
         validate_op(&source, &target, &key, gas_budget)?;
 
         let id = get_migration_count(&env);
-        let op = MigrationOp { source, target, key, checksum, gas_budget };
+        let op = MigrationOp {
+            source,
+            target,
+            key,
+            checksum,
+            gas_budget,
+        };
         let rec = MigrationRecord {
             id,
             op,
@@ -144,8 +152,7 @@ impl MigrationUtils {
         store_migration(&env, &rec);
         set_migration_count(&env, id + 1);
 
-        env.events()
-            .publish((symbol_short!("mig_q"),), (id, admin));
+        env.events().publish((symbol_short!("mig_q"),), (id, admin));
         Ok(id)
     }
 
@@ -310,8 +317,7 @@ impl MigrationUtils {
         store_validation(&env, &result);
         set_validation_count(&env, id + 1);
 
-        env.events()
-            .publish((symbol_short!("val"),), (id, passed));
+        env.events().publish((symbol_short!("val"),), (id, passed));
         Ok(id)
     }
 
@@ -346,8 +352,7 @@ impl MigrationUtils {
         store_validation(&env, &result);
         set_validation_count(&env, id + 1);
 
-        env.events()
-            .publish((symbol_short!("valm"),), (id, passed));
+        env.events().publish((symbol_short!("valm"),), (id, passed));
         Ok(id)
     }
 

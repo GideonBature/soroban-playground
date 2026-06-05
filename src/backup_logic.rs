@@ -3,13 +3,13 @@
 
 use aes_gcm::{
     aead::{Aead, KeyInit},
-    Aes256Gcm, Nonce, Key
+    Aes256Gcm, Key, Nonce,
 };
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use tokio::fs;
-use std::path::Path;
 
 #[async_trait]
 pub trait BackupStorage: Send + Sync {
@@ -28,7 +28,9 @@ impl BackupStorage for LocalStorage {
     async fn upload(&self, name: &str, data: Vec<u8>) -> Result<(), String> {
         let file_path = Path::new(&self.path).join(name);
         if let Some(parent) = file_path.parent() {
-            fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+            fs::create_dir_all(parent)
+                .await
+                .map_err(|e| e.to_string())?;
         }
         fs::write(file_path, data).await.map_err(|e| e.to_string())
     }
@@ -46,7 +48,7 @@ impl BackupStorage for LocalStorage {
     async fn list_backups(&self) -> Result<Vec<String>, String> {
         let mut backups = Vec::new();
         let mut entries = fs::read_dir(&self.path).await.map_err(|e| e.to_string())?;
-        
+
         while let Some(entry) = entries.next_entry().await.map_err(|e| e.to_string())? {
             if let Some(name) = entry.file_name().to_str() {
                 if name.starts_with("backup_") {
@@ -67,7 +69,10 @@ pub struct BackupService {
 
 impl BackupService {
     pub fn new(storage: Box<dyn BackupStorage>, key: [u8; 32]) -> Self {
-        Self { storage, encryption_key: key }
+        Self {
+            storage,
+            encryption_key: key,
+        }
     }
 
     pub async fn run_backup(&self, db_url: &str) -> Result<(), String> {
@@ -94,7 +99,7 @@ impl BackupService {
 
         let timestamp = Utc::now().timestamp();
         let filename = format!("backup_{}.enc", timestamp);
-        
+
         let mut final_payload = nonce_bytes.to_vec();
         final_payload.extend_from_slice(&encrypted_data);
 
@@ -108,11 +113,17 @@ impl BackupService {
         let limit = Duration::days(30);
 
         for backup in backups {
-            if let Some(ts_str) = backup.strip_prefix("backup_").and_then(|s| s.strip_suffix(".enc")) {
+            if let Some(ts_str) = backup
+                .strip_prefix("backup_")
+                .and_then(|s| s.strip_suffix(".enc"))
+            {
                 if let Ok(ts) = ts_str.parse::<i64>() {
                     // Using chrono 0.4.x compatible timestamp mapping
-                    if let Some(naive) = chrono::DateTime::from_timestamp(ts, 0).map(|dt| dt.naive_utc()) {
-                        let backup_time = chrono::DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc);
+                    if let Some(naive) =
+                        chrono::DateTime::from_timestamp(ts, 0).map(|dt| dt.naive_utc())
+                    {
+                        let backup_time =
+                            chrono::DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc);
                         if now.signed_duration_since(backup_time) > limit {
                             println!("[INFO] Deleting old backup: {}", backup);
                             self.storage.delete(&backup).await?;

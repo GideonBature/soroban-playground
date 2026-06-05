@@ -3,7 +3,8 @@
 mod test;
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, symbol_short, Address, Env, String, Val, Vec, Map, Symbol,
+    contract, contracterror, contractimpl, symbol_short, Address, Env, Map, String, Symbol, Val,
+    Vec,
 };
 
 const ADMIN: Symbol = symbol_short!("ADMIN");
@@ -57,7 +58,12 @@ impl CrossContractUtils {
 
     // ── CrossContractCaller ───────────────────────────────────────────────────────
 
-    pub fn call(env: Env, _contract: Address, fn_name: String, args: Vec<Val>) -> Result<Val, Error> {
+    pub fn call(
+        env: Env,
+        _contract: Address,
+        fn_name: String,
+        args: Vec<Val>,
+    ) -> Result<Val, Error> {
         ensure_initialized(&env)?;
         if fn_name.is_empty() || fn_name.to_bytes().len() > 64 {
             return Err(Error::InvalidInput);
@@ -88,7 +94,12 @@ impl CrossContractUtils {
         Ok(Ok(Val::VOID))
     }
 
-    pub fn call_readonly(env: Env, _contract: Address, fn_name: String, args: Vec<Val>) -> Result<Val, Error> {
+    pub fn call_readonly(
+        env: Env,
+        _contract: Address,
+        fn_name: String,
+        args: Vec<Val>,
+    ) -> Result<Val, Error> {
         ensure_initialized(&env)?;
         if fn_name.is_empty() || fn_name.to_bytes().len() > 64 {
             return Err(Error::InvalidInput);
@@ -116,13 +127,13 @@ impl CrossContractUtils {
                 return Err(Error::InvalidInput);
             }
         }
-        
+
         let count_key: Symbol = symbol_short!("reg_count");
         let count: u32 = env.instance().get(&count_key).unwrap_or(0);
         if count >= MAX_REGISTRY_SIZE {
             return Err(Error::CapExceeded);
         }
-        
+
         let key: Symbol = symbol_short!("reg", name);
         env.instance().set(&key, &address);
         env.instance().set(&count_key, &(count + 1));
@@ -154,7 +165,11 @@ impl CrossContractUtils {
         Vec::new(&_env)
     }
 
-    pub fn verify_interface(env: Env, _address: Address, _fn_names: Vec<String>) -> Result<bool, Error> {
+    pub fn verify_interface(
+        env: Env,
+        _address: Address,
+        _fn_names: Vec<String>,
+    ) -> Result<bool, Error> {
         ensure_initialized(&env)?;
         Ok(true)
     }
@@ -163,11 +178,17 @@ impl CrossContractUtils {
 
     pub fn validate_address(env: Env, address: Address) -> Result<bool, Error> {
         ensure_initialized(&env)?;
-        let zero = Address::from_literal("0000000000000000000000000000000000000000000000000000000000000000");
+        let zero = Address::from_literal(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        );
         Ok(address != zero)
     }
 
-    pub fn validate_function_signature(env: Env, fn_name: String, arg_count: u32) -> Result<bool, Error> {
+    pub fn validate_function_signature(
+        env: Env,
+        fn_name: String,
+        arg_count: u32,
+    ) -> Result<bool, Error> {
         ensure_initialized(&env)?;
         if arg_count > MAX_ARGS {
             return Ok(false);
@@ -175,7 +196,11 @@ impl CrossContractUtils {
         Ok(!fn_name.is_empty() && fn_name.to_bytes().len() <= 64)
     }
 
-    pub fn validate_return_type_fn(env: Env, _value: Val, expected_type: String) -> Result<bool, Error> {
+    pub fn validate_return_type_fn(
+        env: Env,
+        _value: Val,
+        expected_type: String,
+    ) -> Result<bool, Error> {
         ensure_initialized(&env)?;
         let valid_types = vec![
             &env,
@@ -190,7 +215,10 @@ impl CrossContractUtils {
 
     // ── BatchCaller ─────────────────────────────────────────────────────────────
 
-    pub fn batch_call(env: Env, calls: Vec<(Address, String, Vec<Val>)>) -> Result<Vec<Result<Val, Error>>, Error> {
+    pub fn batch_call(
+        env: Env,
+        calls: Vec<(Address, String, Vec<Val>)>,
+    ) -> Result<Vec<Result<Val, Error>>, Error> {
         ensure_initialized(&env)?;
         if calls.len() > MAX_BATCH_SIZE {
             return Err(Error::InvalidInput);
@@ -205,7 +233,10 @@ impl CrossContractUtils {
         Ok(results)
     }
 
-    pub fn atomic_batch_call(env: Env, calls: Vec<(Address, String, Vec<Val>)>) -> Result<Vec<Val>, Error> {
+    pub fn atomic_batch_call(
+        env: Env,
+        calls: Vec<(Address, String, Vec<Val>)>,
+    ) -> Result<Vec<Val>, Error> {
         ensure_initialized(&env)?;
         if calls.len() > MAX_BATCH_SIZE {
             return Err(Error::InvalidInput);
@@ -238,7 +269,12 @@ impl CrossContractUtils {
                 let _fallback_clone = _fallback;
                 let fn_name_clone = fn_name;
                 env.events().publish(
-                    (symbol_short!("FallbackInvoked"), &_primary_clone, &_fallback_clone, &fn_name_clone),
+                    (
+                        symbol_short!("FallbackInvoked"),
+                        &_primary_clone,
+                        &_fallback_clone,
+                        &fn_name_clone,
+                    ),
                     &(),
                 );
                 Self::call(env, _fallback, fn_name, args)
@@ -246,7 +282,12 @@ impl CrossContractUtils {
         }
     }
 
-    pub fn register_fallback(env: Env, admin: Address, contract: Address, fallback: Address) -> Result<(), Error> {
+    pub fn register_fallback(
+        env: Env,
+        admin: Address,
+        contract: Address,
+        fallback: Address,
+    ) -> Result<(), Error> {
         admin.require_auth();
         if admin != get_admin(&env)? {
             return Err(Error::Unauthorized);

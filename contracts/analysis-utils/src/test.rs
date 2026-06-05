@@ -5,8 +5,8 @@
 
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
 
-use crate::{AnalysisUtils, AnalysisUtilsClient, Error};
 use crate::types::SeverityLevel;
+use crate::{AnalysisUtils, AnalysisUtilsClient, Error};
 
 fn setup() -> (Env, Address, AnalysisUtilsClient<'static>) {
     let env = Env::default();
@@ -66,8 +66,12 @@ fn test_record_security_ok() {
 fn test_multiple_security_reports() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
-    client.try_record_security(&admin, &hash(&env, 1), &SeverityLevel::Low, &1).unwrap();
-    client.try_record_security(&admin, &hash(&env, 2), &SeverityLevel::Critical, &5).unwrap();
+    client
+        .try_record_security(&admin, &hash(&env, 1), &SeverityLevel::Low, &1)
+        .unwrap();
+    client
+        .try_record_security(&admin, &hash(&env, 2), &SeverityLevel::Critical, &5)
+        .unwrap();
     assert_eq!(client.get_security_count(), 2);
 }
 
@@ -87,7 +91,10 @@ fn test_non_admin_cannot_record_security() {
     client.try_initialize(&admin).unwrap();
     let other = Address::generate(&env);
     assert_eq!(
-        client.try_record_security(&other, &hash(&env, 1), &SeverityLevel::None, &0).unwrap_err().unwrap(),
+        client
+            .try_record_security(&other, &hash(&env, 1), &SeverityLevel::None, &0)
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -98,7 +105,10 @@ fn test_non_admin_cannot_record_security() {
 fn test_record_gas_ok() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
-    let id = client.try_record_gas(&admin, &hash(&env, 2), &1000u64, &5000u64, &80u32).unwrap().unwrap();
+    let id = client
+        .try_record_gas(&admin, &hash(&env, 2), &1000u64, &5000u64, &80u32)
+        .unwrap()
+        .unwrap();
     assert_eq!(id, 0);
     let r = client.get_gas_report(&0);
     assert_eq!(r.avg_gas, 1000);
@@ -111,7 +121,10 @@ fn test_gas_score_over_100_fails() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
     assert_eq!(
-        client.try_record_gas(&admin, &hash(&env, 2), &100u64, &200u64, &101u32).unwrap_err().unwrap(),
+        client
+            .try_record_gas(&admin, &hash(&env, 2), &100u64, &200u64, &101u32)
+            .unwrap_err()
+            .unwrap(),
         Error::InvalidInput
     );
 }
@@ -121,7 +134,10 @@ fn test_gas_avg_greater_than_max_fails() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
     assert_eq!(
-        client.try_record_gas(&admin, &hash(&env, 2), &9000u64, &1000u64, &50u32).unwrap_err().unwrap(),
+        client
+            .try_record_gas(&admin, &hash(&env, 2), &9000u64, &1000u64, &50u32)
+            .unwrap_err()
+            .unwrap(),
         Error::InvalidInput
     );
 }
@@ -142,7 +158,10 @@ fn test_gas_report_not_found() {
 fn test_record_quality_ok() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
-    let id = client.try_record_quality(&admin, &hash(&env, 3), &95u32, &2u32).unwrap().unwrap();
+    let id = client
+        .try_record_quality(&admin, &hash(&env, 3), &95u32, &2u32)
+        .unwrap()
+        .unwrap();
     assert_eq!(id, 0);
     let r = client.get_quality_report(&0);
     assert_eq!(r.score, 95);
@@ -154,7 +173,10 @@ fn test_quality_score_over_100_fails() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
     assert_eq!(
-        client.try_record_quality(&admin, &hash(&env, 3), &101u32, &0u32).unwrap_err().unwrap(),
+        client
+            .try_record_quality(&admin, &hash(&env, 3), &101u32, &0u32)
+            .unwrap_err()
+            .unwrap(),
         Error::InvalidInput
     );
 }
@@ -175,7 +197,10 @@ fn test_non_admin_cannot_record_quality() {
     client.try_initialize(&admin).unwrap();
     let other = Address::generate(&env);
     assert_eq!(
-        client.try_record_quality(&other, &hash(&env, 3), &90u32, &1u32).unwrap_err().unwrap(),
+        client
+            .try_record_quality(&other, &hash(&env, 3), &90u32, &1u32)
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -213,7 +238,8 @@ fn test_record_verification_empty_property_fails() {
     assert_eq!(
         client
             .try_record_verification(&admin, &hash(&env, 4), &s(&env, ""), &true)
-            .unwrap_err().unwrap(),
+            .unwrap_err()
+            .unwrap(),
         Error::InvalidInput
     );
 }
@@ -236,7 +262,8 @@ fn test_non_admin_cannot_record_verification() {
     assert_eq!(
         client
             .try_record_verification(&other, &hash(&env, 4), &s(&env, "prop"), &true)
-            .unwrap_err().unwrap(),
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -248,14 +275,26 @@ fn test_all_counts_independent() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
 
-    client.try_record_security(&admin, &hash(&env, 1), &SeverityLevel::Info, &0).unwrap();
-    client.try_record_security(&admin, &hash(&env, 2), &SeverityLevel::Low, &1).unwrap();
+    client
+        .try_record_security(&admin, &hash(&env, 1), &SeverityLevel::Info, &0)
+        .unwrap();
+    client
+        .try_record_security(&admin, &hash(&env, 2), &SeverityLevel::Low, &1)
+        .unwrap();
 
-    client.try_record_gas(&admin, &hash(&env, 3), &500u64, &1000u64, &75u32).unwrap();
+    client
+        .try_record_gas(&admin, &hash(&env, 3), &500u64, &1000u64, &75u32)
+        .unwrap();
 
-    client.try_record_quality(&admin, &hash(&env, 4), &88u32, &3u32).unwrap();
-    client.try_record_quality(&admin, &hash(&env, 5), &72u32, &10u32).unwrap();
-    client.try_record_quality(&admin, &hash(&env, 6), &55u32, &20u32).unwrap();
+    client
+        .try_record_quality(&admin, &hash(&env, 4), &88u32, &3u32)
+        .unwrap();
+    client
+        .try_record_quality(&admin, &hash(&env, 5), &72u32, &10u32)
+        .unwrap();
+    client
+        .try_record_quality(&admin, &hash(&env, 6), &55u32, &20u32)
+        .unwrap();
 
     client
         .try_record_verification(&admin, &hash(&env, 7), &s(&env, "safe"), &true)
@@ -273,7 +312,10 @@ fn test_all_counts_independent() {
 fn test_record_before_init_fails() {
     let (env, admin, client) = setup();
     assert_eq!(
-        client.try_record_security(&admin, &hash(&env, 0), &SeverityLevel::None, &0).unwrap_err().unwrap(),
+        client
+            .try_record_security(&admin, &hash(&env, 0), &SeverityLevel::None, &0)
+            .unwrap_err()
+            .unwrap(),
         Error::NotInitialized
     );
 }

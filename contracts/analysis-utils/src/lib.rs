@@ -20,7 +20,9 @@ mod storage;
 mod test;
 mod types;
 
-use soroban_sdk::{contract, contracterror, contractimpl, symbol_short, Address, BytesN, Env, String};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, symbol_short, Address, BytesN, Env, String,
+};
 
 use crate::storage::{
     get_admin, get_gas_count, get_quality_count, get_security_count, get_verify_count,
@@ -28,9 +30,7 @@ use crate::storage::{
     set_quality_count, set_security_count, set_verify_count, store_gas, store_quality,
     store_security, store_verify,
 };
-use crate::types::{
-    GasReport, QualityReport, SecurityReport, SeverityLevel, VerificationResult,
-};
+use crate::types::{GasReport, QualityReport, SecurityReport, SeverityLevel, VerificationResult};
 
 /// Errors returned by the analysis-utils contract.
 #[contracterror]
@@ -85,7 +85,10 @@ impl AnalysisUtils {
         };
         store_security(&env, &report);
         set_security_count(&env, id + 1);
-        env.events().publish((symbol_short!("sec"),), (id, severity as u32, finding_count));
+        env.events().publish(
+            (symbol_short!("sec"),),
+            (id, severity as u32, finding_count),
+        );
         Ok(id)
     }
 
@@ -131,7 +134,8 @@ impl AnalysisUtils {
         };
         store_gas(&env, &report);
         set_gas_count(&env, id + 1);
-        env.events().publish((symbol_short!("gas"),), (id, avg_gas, optimisation_score));
+        env.events()
+            .publish((symbol_short!("gas"),), (id, avg_gas, optimisation_score));
         Ok(id)
     }
 
@@ -172,7 +176,8 @@ impl AnalysisUtils {
         };
         store_quality(&env, &report);
         set_quality_count(&env, id + 1);
-        env.events().publish((symbol_short!("qual"),), (id, score, warning_count));
+        env.events()
+            .publish((symbol_short!("qual"),), (id, score, warning_count));
         Ok(id)
     }
 
@@ -213,7 +218,8 @@ impl AnalysisUtils {
         };
         store_verify(&env, &result);
         set_verify_count(&env, id + 1);
-        env.events().publish((symbol_short!("verify"),), (id, holds));
+        env.events()
+            .publish((symbol_short!("verify"),), (id, holds));
         Ok(id)
     }
 

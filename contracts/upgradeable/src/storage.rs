@@ -56,7 +56,10 @@ pub fn set_pending_upgrade(env: &Env, new_hash: &BytesN<32>, proposed_at: u32) {
 
 pub fn get_pending_upgrade(env: &Env) -> Option<(BytesN<32>, u32)> {
     let hash: Option<BytesN<32>> = env.storage().instance().get(&InstanceKey::PendingHash);
-    let at: Option<u32> = env.storage().instance().get(&InstanceKey::UpgradeProposedAt);
+    let at: Option<u32> = env
+        .storage()
+        .instance()
+        .get(&InstanceKey::UpgradeProposedAt);
     match (hash, at) {
         (Some(h), Some(a)) => Some((h, a)),
         _ => None,

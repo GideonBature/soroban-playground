@@ -91,4 +91,3 @@ pub enum DataKey {
     Quality(u32),
     Verify(u32),
 }
-

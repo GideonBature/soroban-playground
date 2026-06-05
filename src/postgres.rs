@@ -28,7 +28,7 @@ impl Database for PostgresDatabase {
 
     async fn get_event(&self, id: i64) -> Result<Option<Event>, String> {
         sqlx::query_as::<_, Event>(
-            "SELECT id, contract_id, event_type, ledger, data FROM events WHERE id = $1"
+            "SELECT id, contract_id, event_type, ledger, data FROM events WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)

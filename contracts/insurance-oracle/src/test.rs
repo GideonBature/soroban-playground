@@ -2,8 +2,8 @@
 
 use soroban_sdk::{testutils::Address as _, Address, Env, String, Vec};
 
-use crate::{InsuranceOracle, InsuranceOracleClient, RiskData};
 use crate::Error;
+use crate::{InsuranceOracle, InsuranceOracleClient, RiskData};
 
 fn setup() -> (Env, Address, InsuranceOracleClient<'static>) {
     let env = Env::default();
@@ -22,7 +22,13 @@ fn make_address(env: &Env) -> Address {
     Address::generate(env)
 }
 
-fn make_risk_data(env: &Env, source: &Address, risk_type: &str, value: i128, confidence: u32) -> RiskData {
+fn make_risk_data(
+    env: &Env,
+    source: &Address,
+    risk_type: &str,
+    value: i128,
+    confidence: u32,
+) -> RiskData {
     RiskData {
         source: source.clone(),
         risk_type: make_string(env, risk_type),
@@ -57,7 +63,7 @@ fn test_submit_risk_data_valid() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     let data = make_risk_data(&env, &source, "crop", 100, 90);
     client.submit_risk_data(&data).unwrap();
 }
@@ -67,7 +73,7 @@ fn test_submit_risk_data_unauthorized_source() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let unauthorized = make_address(&env);
-    
+
     let data = make_risk_data(&env, &unauthorized, "crop", 100, 90);
     let err = client.submit_risk_data(&data).unwrap_err();
     assert_eq!(err, Error::Unauthorized);
@@ -79,7 +85,7 @@ fn test_submit_risk_data_confidence_zero_ok() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     let data = RiskData {
         source,
         risk_type: make_string(&env, "test"),
@@ -97,7 +103,7 @@ fn test_submit_risk_data_confidence_100_ok() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     let data = RiskData {
         source,
         risk_type: make_string(&env, "test"),
@@ -115,7 +121,7 @@ fn test_submit_risk_data_confidence_101_fails() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     let data = RiskData {
         source,
         risk_type: make_string(&env, "test"),
@@ -135,7 +141,7 @@ fn test_submit_risk_data_circuit_breaker_active() {
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
     client.activate_circuit_breaker(&admin).unwrap();
-    
+
     let data = make_risk_data(&env, &source, "test", 100, 90);
     let err = client.submit_risk_data(&data).unwrap_err();
     assert_eq!(err, Error::CircuitOpen);
@@ -147,7 +153,7 @@ fn test_submit_risk_data_risk_type_too_long() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     let mut risk_type = String::from_str(&env, "");
     for _ in 0..65 {
         risk_type.push_str(&make_string(&env, "x"));
@@ -170,7 +176,7 @@ fn test_submit_risk_data_metadata_too_long() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     let mut metadata = String::from_str(&env, "");
     for _ in 0..257 {
         metadata.push_str(&make_string(&env, "x"));
@@ -191,7 +197,9 @@ fn test_submit_risk_data_metadata_too_long() {
 fn test_get_risk_data_empty() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
-    let result = client.get_risk_data(&env, &make_string(&env, "crop")).unwrap();
+    let result = client
+        .get_risk_data(&env, &make_string(&env, "crop"))
+        .unwrap();
     assert_eq!(result.len(), 0);
 }
 
@@ -201,9 +209,13 @@ fn test_get_risk_data_with_entries() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    client.submit_risk_data(&make_risk_data(&env, &source, "crop", 100, 90)).unwrap();
-    
-    let result = client.get_risk_data(&env, &make_string(&env, "crop")).unwrap();
+    client
+        .submit_risk_data(&make_risk_data(&env, &source, "crop", 100, 90))
+        .unwrap();
+
+    let result = client
+        .get_risk_data(&env, &make_string(&env, "crop"))
+        .unwrap();
     assert_eq!(result.len(), 1);
 }
 
@@ -212,7 +224,9 @@ fn test_get_historical_claims_empty() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let ts = env.ledger().timestamp();
-    let result = client.get_historical_claims(&env, &make_string(&env, "crop"), ts, ts + 1000).unwrap();
+    let result = client
+        .get_historical_claims(&env, &make_string(&env, "crop"), ts, ts + 1000)
+        .unwrap();
     assert_eq!(result.len(), 0);
 }
 
@@ -222,7 +236,7 @@ fn test_get_historical_claims_filtered() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     let now = env.ledger().timestamp();
     let data = RiskData {
         source,
@@ -233,8 +247,10 @@ fn test_get_historical_claims_filtered() {
         metadata: make_string(&env, "m"),
     };
     client.submit_risk_data(&data).unwrap();
-    
-    let result = client.get_historical_claims(&env, &make_string(&env, "crop"), now, now + 100).unwrap();
+
+    let result = client
+        .get_historical_claims(&env, &make_string(&env, "crop"), now, now + 100)
+        .unwrap();
     assert_eq!(result.len(), 1);
 }
 
@@ -244,9 +260,13 @@ fn test_get_historical_claims_out_of_range() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    client.submit_risk_data(&make_risk_data(&env, &source, "crop", 100, 90)).unwrap();
-    
-    let result = client.get_historical_claims(&env, &make_string(&env, "crop"), 9999999, 10000000).unwrap();
+    client
+        .submit_risk_data(&make_risk_data(&env, &source, "crop", 100, 90))
+        .unwrap();
+
+    let result = client
+        .get_historical_claims(&env, &make_string(&env, "crop"), 9999999, 10000000)
+        .unwrap();
     assert_eq!(result.len(), 0);
 }
 
@@ -266,7 +286,9 @@ fn test_add_data_source_non_admin_fails() {
     client.initialize(&admin).unwrap();
     let other = make_address(&env);
     env.mock_all_auths();
-    let err = client.add_data_source(&other, &make_address(&env)).unwrap_err();
+    let err = client
+        .add_data_source(&other, &make_address(&env))
+        .unwrap_err();
     assert_eq!(err, Error::Unauthorized);
 }
 
@@ -295,7 +317,9 @@ fn test_add_data_source_cap_exceeded() {
     for _ in 0..20 {
         client.add_data_source(&admin, &make_address(&env)).unwrap();
     }
-    let err = client.add_data_source(&admin, &make_address(&env)).unwrap_err();
+    let err = client
+        .add_data_source(&admin, &make_address(&env))
+        .unwrap_err();
     assert_eq!(err, Error::CapExceeded);
 }
 
@@ -326,7 +350,9 @@ fn test_remove_data_source_not_found() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     client.add_data_source(&admin, &make_address(&env)).unwrap();
-    let err = client.remove_data_source(&admin, &make_address(&env)).unwrap_err();
+    let err = client
+        .remove_data_source(&admin, &make_address(&env))
+        .unwrap_err();
     assert_eq!(err, Error::NotFound);
 }
 
@@ -427,7 +453,7 @@ fn test_circuit_breaker_blocks_submission() {
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
     client.activate_circuit_breaker(&admin).unwrap();
-    
+
     let data = make_risk_data(&env, &source, "test", 100, 90);
     let err = client.submit_risk_data(&data).unwrap_err();
     assert_eq!(err, Error::CircuitOpen);
@@ -441,25 +467,29 @@ fn test_outlier_detection_less_than_3_values() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     // Submit 2 values - outlier detection requires 3+
-    client.submit_risk_data(&RiskData {
-        source,
-        risk_type: make_string(&env, "weather"),
-        value: 100,
-        confidence: 90,
-        timestamp: env.ledger().timestamp(),
-        metadata: make_string(&env, "m"),
-    }).unwrap();
-    
-    client.submit_risk_data(&RiskData {
-        source,
-        risk_type: make_string(&env, "weather"),
-        value: 10000,
-        confidence: 90,
-        timestamp: env.ledger().timestamp(),
-        metadata: make_string(&env, "m"),
-    }).unwrap();
+    client
+        .submit_risk_data(&RiskData {
+            source,
+            risk_type: make_string(&env, "weather"),
+            value: 100,
+            confidence: 90,
+            timestamp: env.ledger().timestamp(),
+            metadata: make_string(&env, "m"),
+        })
+        .unwrap();
+
+    client
+        .submit_risk_data(&RiskData {
+            source,
+            risk_type: make_string(&env, "weather"),
+            value: 10000,
+            confidence: 90,
+            timestamp: env.ledger().timestamp(),
+            metadata: make_string(&env, "m"),
+        })
+        .unwrap();
 }
 
 #[test]
@@ -468,17 +498,19 @@ fn test_outlier_detection_with_3_values() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     // Submit 3 similar values
     for _ in 0..3 {
-        client.submit_risk_data(&RiskData {
-            source,
-            risk_type: make_string(&env, "weather"),
-            value: 100,
-            confidence: 90,
-            timestamp: env.ledger().timestamp(),
-            metadata: make_string(&env, "m"),
-        }).unwrap();
+        client
+            .submit_risk_data(&RiskData {
+                source,
+                risk_type: make_string(&env, "weather"),
+                value: 100,
+                confidence: 90,
+                timestamp: env.ledger().timestamp(),
+                metadata: make_string(&env, "m"),
+            })
+            .unwrap();
     }
 }
 
@@ -519,7 +551,9 @@ fn test_submit_risk_data_before_init_fails() {
 #[test]
 fn test_add_source_before_init_fails() {
     let (env, _admin, client) = setup();
-    let err = client.add_data_source(&_admin, &make_address(&env)).unwrap_err();
+    let err = client
+        .add_data_source(&_admin, &make_address(&env))
+        .unwrap_err();
     assert_eq!(err, Error::NotFound);
 }
 
@@ -538,14 +572,16 @@ fn test_submit_risk_data_negative_value() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    client.submit_risk_data(&RiskData {
-        source,
-        risk_type: make_string(&env, "test"),
-        value: -100,
-        confidence: 50,
-        timestamp: env.ledger().timestamp(),
-        metadata: make_string(&env, "m"),
-    }).unwrap();
+    client
+        .submit_risk_data(&RiskData {
+            source,
+            risk_type: make_string(&env, "test"),
+            value: -100,
+            confidence: 50,
+            timestamp: env.ledger().timestamp(),
+            metadata: make_string(&env, "m"),
+        })
+        .unwrap();
 }
 
 #[test]
@@ -554,8 +590,12 @@ fn test_get_risk_data_multiple_types() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    client.submit_risk_data(&make_risk_data(&env, &source, "type_a", 100, 90)).unwrap();
-    client.submit_risk_data(&make_risk_data(&env, &source, "type_b", 200, 80)).unwrap();
+    client
+        .submit_risk_data(&make_risk_data(&env, &source, "type_a", 100, 90))
+        .unwrap();
+    client
+        .submit_risk_data(&make_risk_data(&env, &source, "type_b", 200, 80))
+        .unwrap();
 }
 
 #[test]
@@ -576,7 +616,9 @@ fn test_get_historical_claims_multiple() {
         };
         client.submit_risk_data(&data).unwrap();
     }
-    let result = client.get_historical_claims(&env, &make_string(&env, "crop"), now, now + 10000).unwrap();
+    let result = client
+        .get_historical_claims(&env, &make_string(&env, "crop"), now, now + 10000)
+        .unwrap();
     assert_eq!(result.len(), 5);
 }
 
@@ -673,14 +715,16 @@ fn test_submit_risk_data_zero_confidence() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    client.submit_risk_data(&RiskData {
-        source,
-        risk_type: make_string(&env, "zero_conf"),
-        value: 50,
-        confidence: 0,
-        timestamp: env.ledger().timestamp(),
-        metadata: make_string(&env, "m"),
-    }).unwrap();
+    client
+        .submit_risk_data(&RiskData {
+            source,
+            risk_type: make_string(&env, "zero_conf"),
+            value: 50,
+            confidence: 0,
+            timestamp: env.ledger().timestamp(),
+            metadata: make_string(&env, "m"),
+        })
+        .unwrap();
 }
 
 #[test]
@@ -689,14 +733,16 @@ fn test_submit_risk_data_large_value() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    client.submit_risk_data(&RiskData {
-        source,
-        risk_type: make_string(&env, "large"),
-        value: 1_000_000_000,
-        confidence: 95,
-        timestamp: env.ledger().timestamp(),
-        metadata: make_string(&env, "m"),
-    }).unwrap();
+    client
+        .submit_risk_data(&RiskData {
+            source,
+            risk_type: make_string(&env, "large"),
+            value: 1_000_000_000,
+            confidence: 95,
+            timestamp: env.ledger().timestamp(),
+            metadata: make_string(&env, "m"),
+        })
+        .unwrap();
 }
 
 #[test]
@@ -705,16 +751,18 @@ fn test_get_risk_data_different_types() {
     client.initialize(&admin).unwrap();
     let source = make_address(&env);
     client.add_data_source(&admin, &source).unwrap();
-    
+
     for rt in ["flood", "fire", "wind", "earthquake"].iter() {
-        client.submit_risk_data(&RiskData {
-            source,
-            risk_type: make_string(&env, rt),
-            value: 100,
-            confidence: 85,
-            timestamp: env.ledger().timestamp(),
-            metadata: make_string(&env, "m"),
-        }).unwrap();
+        client
+            .submit_risk_data(&RiskData {
+                source,
+                risk_type: make_string(&env, rt),
+                value: 100,
+                confidence: 85,
+                timestamp: env.ledger().timestamp(),
+                metadata: make_string(&env, "m"),
+            })
+            .unwrap();
     }
 }
 
@@ -758,14 +806,18 @@ fn test_outlier_detection_exactly_3_std_dev() {
 #[test]
 fn test_get_risk_data_before_init_fails() {
     let (env, _admin, client) = setup();
-    let err = client.get_risk_data(&env, &make_string(&env, "t")).unwrap_err();
+    let err = client
+        .get_risk_data(&env, &make_string(&env, "t"))
+        .unwrap_err();
     assert_eq!(err, Error::NotFound);
 }
 
 #[test]
 fn test_get_historical_claims_before_init_fails() {
     let (env, _admin, client) = setup();
-    let err = client.get_historical_claims(&env, &make_string(&env, "t"), 0, 100).unwrap_err();
+    let err = client
+        .get_historical_claims(&env, &make_string(&env, "t"), 0, 100)
+        .unwrap_err();
     assert_eq!(err, Error::NotFound);
 }
 

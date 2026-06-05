@@ -86,10 +86,10 @@ fn test_balance_after_transfer() {
     let alice = make_address(&env);
     let bob = make_address(&env);
     client.mint(&alice, &1).unwrap();
-    
+
     env.mock_all_auths();
     client.transfer_from(&alice, &bob, &1).unwrap();
-    
+
     assert_eq!(client.balance_of(&env, &alice).unwrap(), 0);
     assert_eq!(client.balance_of(&env, &bob).unwrap(), 1);
 }
@@ -120,11 +120,11 @@ fn test_mint_burn_lifecycle() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let to = make_address(&env);
-    
+
     client.mint(&to, &1).unwrap();
     assert_eq!(client.balance_of(&env, &to).unwrap(), 1);
     assert_eq!(client.total_supply(&env).unwrap(), 1);
-    
+
     client.burn(&to, &1).unwrap();
     assert_eq!(client.balance_of(&env, &to).unwrap(), 0);
     assert_eq!(client.total_supply(&env).unwrap(), 0);
@@ -137,11 +137,11 @@ fn test_multiple_mints() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let to = make_address(&env);
-    
+
     for i in 1..=5 {
         client.mint(&to, &i).unwrap();
     }
-    
+
     assert_eq!(client.balance_of(&env, &to).unwrap(), 5);
     assert_eq!(client.total_supply(&env).unwrap(), 5);
 }
@@ -164,12 +164,12 @@ fn test_transfer_from_owner() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
+
     env.mock_all_auths();
     client.transfer_from(&alice, &bob, &1).unwrap();
-    
+
     assert_eq!(client.owner_of(&env, &1).unwrap(), bob);
 }
 
@@ -180,13 +180,13 @@ fn test_transfer_from_approved() {
     let alice = make_address(&env);
     let bob = make_address(&env);
     let charlie = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
+
     client.approve(&bob, &1).unwrap();
     env.mock_all_auths();
     client.transfer_from(&alice, &charlie, &1).unwrap();
-    
+
     assert_eq!(client.owner_of(&env, &1).unwrap(), charlie);
 }
 
@@ -195,10 +195,12 @@ fn test_safe_transfer_to_zero_fails() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
-    let err = client.safe_transfer_from(&alice, &zero_address(), &1).unwrap_err();
+
+    let err = client
+        .safe_transfer_from(&alice, &zero_address(), &1)
+        .unwrap_err();
     assert_eq!(err, Error::InvalidInput);
 }
 
@@ -208,7 +210,7 @@ fn test_transfer_nonexistent_token_fails() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     env.mock_all_auths();
     let err = client.transfer_from(&alice, &bob, &999).unwrap_err();
     assert_eq!(err, Error::TokenNotFound);
@@ -221,9 +223,9 @@ fn test_unauthorized_transfer_fails() {
     let alice = make_address(&env);
     let bob = make_address(&env);
     let charlie = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
+
     env.mock_all_auths();
     let err = client.transfer_from(&alice, &bob, &1).unwrap_err();
     assert_eq!(err, Error::NotApproved);
@@ -236,10 +238,10 @@ fn test_burn_by_owner() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
     client.burn(&alice, &1).unwrap();
-    
+
     let err = client.owner_of(&env, &1).unwrap_err();
     assert_eq!(err, Error::TokenNotFound);
 }
@@ -249,7 +251,7 @@ fn test_burn_nonexistent_token_fails() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
-    
+
     let err = client.burn(&alice, &999).unwrap_err();
     assert_eq!(err, Error::TokenNotFound);
 }
@@ -262,10 +264,10 @@ fn test_approve_and_get_approved() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
     client.approve(&bob, &1).unwrap();
-    
+
     assert!(client.get_approved(&env, &1).unwrap().is_some());
 }
 
@@ -276,9 +278,9 @@ fn test_approve_not_owner_fails() {
     let alice = make_address(&env);
     let bob = make_address(&env);
     let charlie = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
+
     // Bob (not owner) cannot approve
     env.mock_all_auths();
     let err = client.approve(&charlie, &1).unwrap_err();
@@ -291,7 +293,7 @@ fn test_set_approval_for_all() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     client.set_approval_for_all(&alice, &bob, &true).unwrap();
     assert!(client.is_approved_for_all(&env, &alice, &bob).unwrap());
 }
@@ -302,7 +304,7 @@ fn test_set_approval_for_all_false() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     client.set_approval_for_all(&alice, &bob, &true).unwrap();
     client.set_approval_for_all(&alice, &bob, &false).unwrap();
     assert!(!client.is_approved_for_all(&env, &alice, &bob).unwrap());
@@ -315,7 +317,7 @@ fn test_token_uri_not_set() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let to = make_address(&env);
-    
+
     client.mint(&to, &1).unwrap();
     let uri = client.token_uri(&env, &1).unwrap();
     assert_eq!(uri, make_string(&env, ""));
@@ -326,10 +328,12 @@ fn test_set_token_uri_owner() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let to = make_address(&env);
-    
+
     client.mint(&to, &1).unwrap();
-    client.set_token_uri(&to, &1, &make_string(&env, "https://example.com/token/1")).unwrap();
-    
+    client
+        .set_token_uri(&to, &1, &make_string(&env, "https://example.com/token/1"))
+        .unwrap();
+
     let uri = client.token_uri(&env, &1).unwrap();
     assert_eq!(uri, make_string(&env, "https://example.com/token/1"));
 }
@@ -339,14 +343,14 @@ fn test_set_token_uri_uri_too_long() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let to = make_address(&env);
-    
+
     client.mint(&to, &1).unwrap();
-    
+
     let mut long_uri = String::from_str(&env, "");
     for _ in 0..513 {
         long_uri.push_str(&make_string(&env, "x"));
     }
-    
+
     let err = client.set_token_uri(&to, &1, &long_uri).unwrap_err();
     assert_eq!(err, Error::InvalidInput);
 }
@@ -407,13 +411,13 @@ fn test_transfer_clears_approval() {
     let alice = make_address(&env);
     let bob = make_address(&env);
     let charlie = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
     client.approve(&bob, &1).unwrap();
-    
+
     env.mock_all_auths();
     client.transfer_from(&alice, &charlie, &1).unwrap();
-    
+
     // Approval should be cleared
     assert!(client.get_approved(&env, &1).unwrap().is_none());
 }
@@ -426,16 +430,16 @@ fn test_transfer_multiple_tokens() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     for i in 1..=5 {
         client.mint(&alice, &i).unwrap();
     }
-    
+
     for i in 1..=5 {
         env.mock_all_auths();
         client.transfer_from(&alice, &bob, &i).unwrap();
     }
-    
+
     assert_eq!(client.balance_of(&env, &alice).unwrap(), 0);
     assert_eq!(client.balance_of(&env, &bob).unwrap(), 5);
 }
@@ -448,14 +452,14 @@ fn test_transfer_chain() {
     let bob = make_address(&env);
     let charlie = make_address(&env);
     let dave = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
+
     env.mock_all_auths();
     client.transfer_from(&alice, &bob, &1).unwrap();
     client.transfer_from(&bob, &charlie, &1).unwrap();
     client.transfer_from(&charlie, &dave, &1).unwrap();
-    
+
     assert_eq!(client.owner_of(&env, &1).unwrap(), dave);
 }
 
@@ -465,12 +469,12 @@ fn test_safe_transfer_from_owner() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
+
     env.mock_all_auths();
     client.safe_transfer_from(&alice, &bob, &1).unwrap();
-    
+
     assert_eq!(client.owner_of(&env, &1).unwrap(), bob);
 }
 
@@ -482,13 +486,13 @@ fn test_burn_by_approved() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
     client.approve(&bob, &1).unwrap();
-    
+
     env.mock_all_auths();
     client.burn(&bob, &1).unwrap();
-    
+
     let err = client.owner_of(&env, &1).unwrap_err();
     assert_eq!(err, Error::TokenNotFound);
 }
@@ -500,9 +504,9 @@ fn test_burn_not_owner_or_approved_fails() {
     let alice = make_address(&env);
     let bob = make_address(&env);
     let charlie = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
-    
+
     env.mock_all_auths();
     let err = client.burn(&charlie, &1).unwrap_err();
     assert_eq!(err, Error::NotApproved);
@@ -524,12 +528,12 @@ fn test_mint_multiple_owners() {
     client.initialize(&admin).unwrap();
     let alice = make_address(&env);
     let bob = make_address(&env);
-    
+
     client.mint(&alice, &1).unwrap();
     client.mint(&bob, &2).unwrap();
     client.mint(&alice, &3).unwrap();
     client.mint(&bob, &4).unwrap();
-    
+
     assert_eq!(client.balance_of(&env, &alice).unwrap(), 2);
     assert_eq!(client.balance_of(&env, &bob).unwrap(), 2);
 }
@@ -549,11 +553,11 @@ fn test_multiple_approvals() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
-    
+
     for i in 1..=5 {
         client.mint(&owner, &i).unwrap();
     }
-    
+
     for i in 1..=5 {
         let spender = make_address(&env);
         client.approve(&spender, &i).unwrap();
@@ -565,12 +569,14 @@ fn test_set_approval_for_all_different_operators() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
-    
+
     for _ in 0..3 {
         let operator = make_address(&env);
-        client.set_approval_for_all(&owner, &operator, &true).unwrap();
+        client
+            .set_approval_for_all(&owner, &operator, &true)
+            .unwrap();
     }
-    
+
     for _ in 0..3 {
         let operator = make_address(&env);
         assert!(!client.is_approved_for_all(&env, &owner, &operator).unwrap());
@@ -585,10 +591,12 @@ fn test_set_token_uri_admin() {
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
     let other = make_address(&env);
-    
+
     client.mint(&owner, &1).unwrap();
     admin.require_auth();
-    client.set_token_uri(&admin, &1, &make_string(&env, "ipfs://Qm...")).unwrap();
+    client
+        .set_token_uri(&admin, &1, &make_string(&env, "ipfs://Qm..."))
+        .unwrap();
 }
 
 #[test]
@@ -597,11 +605,13 @@ fn test_set_token_uri_non_admin_non_owner_fails() {
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
     let other = make_address(&env);
-    
+
     client.mint(&owner, &1).unwrap();
-    
+
     env.mock_all_auths();
-    let err = client.set_token_uri(&other, &1, &make_string(&env, "uri")).unwrap_err();
+    let err = client
+        .set_token_uri(&other, &1, &make_string(&env, "uri"))
+        .unwrap_err();
     assert_eq!(err, Error::Unauthorized);
 }
 
@@ -610,14 +620,14 @@ fn test_token_uri_multiple_tokens() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
-    
+
     for i in 1..=3 {
         client.mint(&owner, &i).unwrap();
         let mut uri = String::from_str(&env, "https://example.com/");
         uri.push_str(&i.to_string(&env));
         client.set_token_uri(&owner, &i, &uri).unwrap();
     }
-    
+
     for i in 1..=3 {
         let uri = client.token_uri(&env, &i).unwrap();
         assert!(uri.to_string().contains(&i.to_string(&env)));
@@ -631,11 +641,11 @@ fn test_token_by_index_minted() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
-    
+
     for i in 1..=10 {
         client.mint(&owner, &i).unwrap();
     }
-    
+
     for i in 0..10 {
         let _ = client.token_by_index(&env, &i).unwrap();
     }
@@ -646,11 +656,11 @@ fn test_token_of_owner_by_index_minted() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
-    
+
     for i in 1..=5 {
         client.mint(&owner, &i).unwrap();
     }
-    
+
     for i in 0..5 {
         let _ = client.token_of_owner_by_index(&env, &owner, &i).unwrap();
     }
@@ -663,17 +673,17 @@ fn test_sequential_mint_burn_preserves_supply() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let owner = make_address(&env);
-    
+
     for i in 1..=20 {
         client.mint(&owner, &i).unwrap();
         assert_eq!(client.total_supply(&env).unwrap(), i as u64);
     }
-    
+
     for i in 1..=20 {
         client.burn(&owner, &i).unwrap();
         assert_eq!(client.total_supply(&env).unwrap(), (20 - i) as u64);
     }
-    
+
     assert_eq!(client.total_supply(&env).unwrap(), 0);
 }
 
@@ -682,14 +692,18 @@ fn test_sequential_mint_burn_preserves_supply() {
 #[test]
 fn test_transfer_before_init_fails() {
     let (env, _admin, client) = setup();
-    let err = client.transfer_from(&make_address(&env), &make_address(&env), &1).unwrap_err();
+    let err = client
+        .transfer_from(&make_address(&env), &make_address(&env), &1)
+        .unwrap_err();
     assert_eq!(err, Error::NotFound);
 }
 
 #[test]
 fn test_safe_transfer_before_init_fails() {
     let (env, _admin, client) = setup();
-    let err = client.safe_transfer_from(&make_address(&env), &make_address(&env), &1).unwrap_err();
+    let err = client
+        .safe_transfer_from(&make_address(&env), &make_address(&env), &1)
+        .unwrap_err();
     assert_eq!(err, Error::NotFound);
 }
 
@@ -717,7 +731,9 @@ fn test_token_by_index_before_init_fails() {
 #[test]
 fn test_token_of_owner_by_index_before_init_fails() {
     let (env, _admin, client) = setup();
-    let err = client.token_of_owner_by_index(&env, &make_address(&env), &0).unwrap_err();
+    let err = client
+        .token_of_owner_by_index(&env, &make_address(&env), &0)
+        .unwrap_err();
     assert_eq!(err, Error::NotFound);
 }
 
@@ -767,7 +783,9 @@ fn test_enumerable_out_of_bounds() {
     let (env, admin, client) = setup();
     client.initialize(&admin).unwrap();
     let _ = client.token_by_index(&env, &100).unwrap();
-    let _ = client.token_of_owner_by_index(&env, &make_address(&env), &100).unwrap();
+    let _ = client
+        .token_of_owner_by_index(&env, &make_address(&env), &100)
+        .unwrap();
 }
 
 // ── Additional Metadata Boundary Tests ───────────────────────────────────────

@@ -60,9 +60,7 @@ counter_fns!(get_rollback_count, set_rollback_count, RollbackCount);
 // ── Record storage ────────────────────────────────────────────────────────────
 
 pub fn store_migration(env: &Env, r: &MigrationRecord) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::Migration(r.id), r);
+    env.storage().persistent().set(&DataKey::Migration(r.id), r);
 }
 
 pub fn load_migration(env: &Env, id: u32) -> Result<MigrationRecord, Error> {
@@ -108,9 +106,7 @@ pub fn load_transfer(env: &Env, id: u32) -> Result<TransferLog, Error> {
 }
 
 pub fn store_rollback(env: &Env, r: &RollbackRecord) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::Rollback(r.id), r);
+    env.storage().persistent().set(&DataKey::Rollback(r.id), r);
 }
 
 pub fn load_rollback(env: &Env, id: u32) -> Result<RollbackRecord, Error> {

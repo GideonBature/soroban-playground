@@ -1,8 +1,8 @@
 // Copyright (c) 2026 StellarDevTools
 // SPDX-License-Identifier: MIT
 
-use sqlx::{SqlitePool, PgPool};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
+use sqlx::{PgPool, SqlitePool};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .bind(data)
         .execute(&pg_pool)
         .await?;
-        
+
         println!("Migrated Event ID: {} (Checksum: {})", id, &checksum[..8]);
     }
 

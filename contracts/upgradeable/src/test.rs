@@ -3,7 +3,10 @@
 
 #![cfg(test)]
 
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, BytesN, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, BytesN, Env,
+};
 
 use crate::{Error, UpgradeableContract, UpgradeableContractClient};
 
@@ -74,7 +77,10 @@ fn test_propose_upgrade_blocked_when_paused() {
     client.try_pause(&admin).unwrap();
     let hash = BytesN::from_array(&env, &[0u8; 32]);
     assert_eq!(
-        client.try_propose_upgrade(&admin, &hash).unwrap_err().unwrap(),
+        client
+            .try_propose_upgrade(&admin, &hash)
+            .unwrap_err()
+            .unwrap(),
         Error::ContractPaused
     );
 }
@@ -88,7 +94,10 @@ fn test_non_admin_cannot_upgrade() {
     let other = Address::generate(&env);
     let hash = BytesN::from_array(&env, &[2u8; 32]);
     assert_eq!(
-        client.try_propose_upgrade(&other, &hash).unwrap_err().unwrap(),
+        client
+            .try_propose_upgrade(&other, &hash)
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -169,7 +178,10 @@ fn test_propose_blocked_not_initialized() {
     let caller = Address::generate(&env);
     let hash = BytesN::from_array(&env, &[9u8; 32]);
     assert_eq!(
-        client.try_propose_upgrade(&caller, &hash).unwrap_err().unwrap(),
+        client
+            .try_propose_upgrade(&caller, &hash)
+            .unwrap_err()
+            .unwrap(),
         Error::NotInitialized
     );
 }

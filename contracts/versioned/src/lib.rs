@@ -64,12 +64,18 @@ impl VersionedContract {
         admin.require_auth();
         set_admin(&env, &admin);
 
-        let v = Version { major, minor, patch, label };
+        let v = Version {
+            major,
+            minor,
+            patch,
+            label,
+        };
         store_version(&env, 0, &v);
         set_version_count(&env, 1);
         set_current_index(&env, 0);
 
-        env.events().publish((symbol_short!("init"),), (admin, major, minor, patch));
+        env.events()
+            .publish((symbol_short!("init"),), (admin, major, minor, patch));
         Ok(())
     }
 
@@ -89,11 +95,17 @@ impl VersionedContract {
         require_admin(&env, &admin)?;
 
         let idx = get_version_count(&env);
-        let v = Version { major, minor, patch, label };
+        let v = Version {
+            major,
+            minor,
+            patch,
+            label,
+        };
         store_version(&env, idx, &v);
         set_version_count(&env, idx + 1);
 
-        env.events().publish((symbol_short!("regver"),), (idx, major, minor, patch));
+        env.events()
+            .publish((symbol_short!("regver"),), (idx, major, minor, patch));
         Ok(idx)
     }
 

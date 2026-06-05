@@ -49,7 +49,10 @@ fn ensure_initialized(env: &Env) -> Result<(), Error> {
 }
 
 fn get_sources(env: &Env) -> Vec<Address> {
-    env.storage().persistent().get(&symbol_short!("SOURCES")).unwrap_or_else(|| Vec::new(env))
+    env.storage()
+        .persistent()
+        .get(&symbol_short!("SOURCES"))
+        .unwrap_or_else(|| Vec::new(env))
 }
 
 #[contract]
@@ -64,7 +67,9 @@ impl InsuranceOracle {
         admin.require_auth();
         set_admin(&env, &admin);
         env.instance().set(&VERIFICATION_THRESHOLD, &3u32);
-        env.storage().persistent().set(&symbol_short!("SOURCES"), &Vec::<Address>::new(&env));
+        env.storage()
+            .persistent()
+            .set(&symbol_short!("SOURCES"), &Vec::<Address>::new(&env));
         env.instance().set(&CIRCUIT_BREAKER, &false);
         Ok(())
     }
@@ -74,51 +79,68 @@ impl InsuranceOracle {
     pub fn submit_risk_data(env: Env, data: RiskData) -> Result<(), Error> {
         ensure_initialized(&env)?;
         let sources = get_sources(&env);
-        
+
         if !sources.contains(data.source) {
             return Err(Error::Unauthorized);
         }
-        
+
         if data.confidence > 100 {
             return Err(Error::InvalidInput);
         }
-        
+
         let breaker: bool = env.instance().get(&CIRCUIT_BREAKER).unwrap_or(false);
         if breaker {
             return Err(Error::CircuitOpen);
         }
-        
+
         if data.risk_type.to_bytes().len() > 64 {
             return Err(Error::InvalidInput);
         }
-        
+
         if data.metadata.to_bytes().len() > 256 {
             return Err(Error::InvalidInput);
         }
-        
+
         let key: symbol_short::Symbol = symbol_short!("RD");
-        let mut all_data: Vec<RiskData> = env.storage().persistent().get(&key).unwrap_or_else(|| Vec::new(&env));
+        let mut all_data: Vec<RiskData> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(&env));
         all_data.push_back(data.clone());
         env.storage().persistent().set(&key, &all_data);
-        
+
         env.events().publish(
             (symbol_short!("RiskDataSubmitted"),),
             (&data.risk_type, &data.value),
         );
-        
+
         Ok(())
     }
 
     pub fn get_risk_data(env: Env, _risk_type: String) -> Result<Vec<RiskData>, Error> {
         ensure_initialized(&env)?;
         let key: symbol_short::Symbol = symbol_short!("RD");
-        Ok(env.storage().persistent().get(&key).unwrap_or_else(|| Vec::new(&env)))
+        Ok(env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(&env)))
     }
 
-    pub fn get_historical_claims(env: Env, _risk_type: String, from: u64, to: u64) -> Result<Vec<RiskData>, Error> {
+    pub fn get_historical_claims(
+        env: Env,
+        _risk_type: String,
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<RiskData>, Error> {
         ensure_initialized(&env)?;
         let key: symbol_short::Symbol = symbol_short!("RD");
-        let all_data: Vec<RiskData> = env.storage().persistent().get(&key).unwrap_or_else(|| Vec::new(&env));
+        let all_data: Vec<RiskData> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(&env));
         let mut result: Vec<RiskData> = Vec::new(&env);
         for data in all_data.iter() {
             if data.timestamp >= from && data.timestamp <= to {
@@ -136,7 +158,7 @@ impl InsuranceOracle {
         if admin != current_admin {
             return Err(Error::Unauthorized);
         }
-        
+
         let mut sources = get_sources(&env);
         if sources.contains(source) {
             return Ok(());
@@ -144,9 +166,11 @@ impl InsuranceOracle {
         if sources.len() >= MAX_SOURCES {
             return Err(Error::CapExceeded);
         }
-        
+
         sources.push_back(source);
-        env.storage().persistent().set(&symbol_short!("SOURCES"), &sources);
+        env.storage()
+            .persistent()
+            .set(&symbol_short!("SOURCES"), &sources);
         Ok(())
     }
 
@@ -156,7 +180,7 @@ impl InsuranceOracle {
         if admin != current_admin {
             return Err(Error::Unauthorized);
         }
-        
+
         let mut sources = get_sources(&env);
         let mut found = false;
         let mut new_sources: Vec<Address> = Vec::new(&env);
@@ -170,21 +194,27 @@ impl InsuranceOracle {
         if !found {
             return Err(Error::NotFound);
         }
-        env.storage().persistent().set(&symbol_short!("SOURCES"), &new_sources);
+        env.storage()
+            .persistent()
+            .set(&symbol_short!("SOURCES"), &new_sources);
         Ok(())
     }
 
-    pub fn set_verification_threshold(env: Env, admin: Address, threshold: u32) -> Result<(), Error> {
+    pub fn set_verification_threshold(
+        env: Env,
+        admin: Address,
+        threshold: u32,
+    ) -> Result<(), Error> {
         admin.require_auth();
         let current_admin = get_admin(&env)?;
         if admin != current_admin {
             return Err(Error::Unauthorized);
         }
-        
+
         if threshold < 1 || threshold > 20 {
             return Err(Error::InvalidInput);
         }
-        
+
         env.instance().set(&VERIFICATION_THRESHOLD, &threshold);
         Ok(())
     }
@@ -197,9 +227,10 @@ impl InsuranceOracle {
         if admin != current_admin {
             return Err(Error::Unauthorized);
         }
-        
+
         env.instance().set(&CIRCUIT_BREAKER, &true);
-        env.events().publish((symbol_short!("CircuitBreakerActivated"),), &());
+        env.events()
+            .publish((symbol_short!("CircuitBreakerActivated"),), &());
         Ok(())
     }
 
@@ -209,9 +240,10 @@ impl InsuranceOracle {
         if admin != current_admin {
             return Err(Error::Unauthorized);
         }
-        
+
         env.instance().set(&CIRCUIT_BREAKER, &false);
-        env.events().publish((symbol_short!("CircuitBreakerDeactivated"),), &());
+        env.events()
+            .publish((symbol_short!("CircuitBreakerDeactivated"),), &());
         Ok(())
     }
 

@@ -309,7 +309,9 @@ fn test_execute_migration_already_completed_fails() {
         .try_queue_migration(&admin, &a, &b, &s(&env, "k"), &hash(&env, 9), &10_000u64)
         .unwrap()
         .unwrap();
-    client.try_execute_migration(&admin, &id, &hash(&env, 9)).unwrap();
+    client
+        .try_execute_migration(&admin, &id, &hash(&env, 9))
+        .unwrap();
     assert_eq!(
         client
             .try_execute_migration(&admin, &id, &hash(&env, 9))
@@ -364,7 +366,10 @@ fn test_execute_migration_not_found() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
     assert_eq!(
-        client.try_execute_migration(&admin, &42, &hash(&env, 1)).unwrap_err().unwrap(),
+        client
+            .try_execute_migration(&admin, &42, &hash(&env, 1))
+            .unwrap_err()
+            .unwrap(),
         Error::MigrationNotFound
     );
 }
@@ -423,7 +428,9 @@ fn test_transfer_state_multiple() {
             3 => "k3",
             _ => "k4",
         };
-        client.try_transfer_state(&admin, &a, &b, &s(&env, key)).unwrap();
+        client
+            .try_transfer_state(&admin, &a, &b, &s(&env, key))
+            .unwrap();
     }
     assert_eq!(client.get_transfer_count(), 5);
 }
@@ -481,7 +488,10 @@ fn test_transfer_state_paused_fails() {
     let b = Address::generate(&env);
     client.try_pause(&admin).unwrap();
     assert_eq!(
-        client.try_transfer_state(&admin, &a, &b, &s(&env, "k")).unwrap_err().unwrap(),
+        client
+            .try_transfer_state(&admin, &a, &b, &s(&env, "k"))
+            .unwrap_err()
+            .unwrap(),
         Error::ContractPaused
     );
 }
@@ -687,7 +697,10 @@ fn test_validate_migration_non_admin_fails() {
         .unwrap();
     let other = Address::generate(&env);
     assert_eq!(
-        client.try_validate_migration(&other, &mid, &hash(&env, 1)).unwrap_err().unwrap(),
+        client
+            .try_validate_migration(&other, &mid, &hash(&env, 1))
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -696,9 +709,15 @@ fn test_validate_migration_non_admin_fails() {
 fn test_validation_count_increments() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
-    client.try_validate_hash(&admin, &0, &hash(&env, 1), &hash(&env, 1)).unwrap();
-    client.try_validate_hash(&admin, &0, &hash(&env, 2), &hash(&env, 2)).unwrap();
-    client.try_validate_hash(&admin, &0, &hash(&env, 3), &hash(&env, 4)).unwrap();
+    client
+        .try_validate_hash(&admin, &0, &hash(&env, 1), &hash(&env, 1))
+        .unwrap();
+    client
+        .try_validate_hash(&admin, &0, &hash(&env, 2), &hash(&env, 2))
+        .unwrap();
+    client
+        .try_validate_hash(&admin, &0, &hash(&env, 3), &hash(&env, 4))
+        .unwrap();
     assert_eq!(client.get_validation_count(), 3);
 }
 
@@ -803,7 +822,10 @@ fn test_append_to_batch_non_admin_fails() {
     let op = build_op(&env, &a, &b, "k1", &hash(&env, 1));
     let other = Address::generate(&env);
     assert_eq!(
-        client.try_append_to_batch(&other, &batch_id, &op).unwrap_err().unwrap(),
+        client
+            .try_append_to_batch(&other, &batch_id, &op)
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -817,7 +839,10 @@ fn test_append_to_batch_empty_key_fails() {
     let b = Address::generate(&env);
     let op = build_op(&env, &a, &b, "", &hash(&env, 1));
     assert_eq!(
-        client.try_append_to_batch(&admin, &batch_id, &op).unwrap_err().unwrap(),
+        client
+            .try_append_to_batch(&admin, &batch_id, &op)
+            .unwrap_err()
+            .unwrap(),
         Error::InvalidInput
     );
 }
@@ -830,7 +855,10 @@ fn test_append_to_batch_identical_contracts_fails() {
     let a = Address::generate(&env);
     let op = build_op(&env, &a, &a, "k", &hash(&env, 1));
     assert_eq!(
-        client.try_append_to_batch(&admin, &batch_id, &op).unwrap_err().unwrap(),
+        client
+            .try_append_to_batch(&admin, &batch_id, &op)
+            .unwrap_err()
+            .unwrap(),
         Error::IdenticalContracts
     );
 }
@@ -845,7 +873,10 @@ fn test_append_to_batch_paused_fails() {
     let op = build_op(&env, &a, &b, "k", &hash(&env, 1));
     client.try_pause(&admin).unwrap();
     assert_eq!(
-        client.try_append_to_batch(&admin, &batch_id, &op).unwrap_err().unwrap(),
+        client
+            .try_append_to_batch(&admin, &batch_id, &op)
+            .unwrap_err()
+            .unwrap(),
         Error::ContractPaused
     );
 }
@@ -862,7 +893,10 @@ fn test_append_to_batch_after_execute_fails() {
     client.try_execute_batch(&admin, &batch_id).unwrap();
     let op2 = build_op(&env, &a, &b, "k2", &hash(&env, 2));
     assert_eq!(
-        client.try_append_to_batch(&admin, &batch_id, &op2).unwrap_err().unwrap(),
+        client
+            .try_append_to_batch(&admin, &batch_id, &op2)
+            .unwrap_err()
+            .unwrap(),
         Error::BatchNotOpen
     );
 }
@@ -873,7 +907,10 @@ fn test_execute_batch_empty_fails() {
     client.try_initialize(&admin).unwrap();
     let batch_id = client.try_open_batch(&admin).unwrap().unwrap();
     assert_eq!(
-        client.try_execute_batch(&admin, &batch_id).unwrap_err().unwrap(),
+        client
+            .try_execute_batch(&admin, &batch_id)
+            .unwrap_err()
+            .unwrap(),
         Error::InvalidInput
     );
 }
@@ -887,7 +924,10 @@ fn test_execute_batch_single_op() {
     let b = Address::generate(&env);
     let op = build_op(&env, &a, &b, "k", &hash(&env, 1));
     client.try_append_to_batch(&admin, &batch_id, &op).unwrap();
-    let status = client.try_execute_batch(&admin, &batch_id).unwrap().unwrap();
+    let status = client
+        .try_execute_batch(&admin, &batch_id)
+        .unwrap()
+        .unwrap();
     assert_eq!(status, BatchStatus::Completed);
     let batch = client.get_batch(&batch_id);
     assert_eq!(batch.status, BatchStatus::Completed);
@@ -911,7 +951,10 @@ fn test_execute_batch_multiple_ops() {
         let op = build_op(&env, &a, &b, key, &hash(&env, i));
         client.try_append_to_batch(&admin, &batch_id, &op).unwrap();
     }
-    let status = client.try_execute_batch(&admin, &batch_id).unwrap().unwrap();
+    let status = client
+        .try_execute_batch(&admin, &batch_id)
+        .unwrap()
+        .unwrap();
     assert_eq!(status, BatchStatus::Completed);
     let batch = client.get_batch(&batch_id);
     assert_eq!(batch.executed_count, 4);
@@ -928,7 +971,10 @@ fn test_execute_batch_already_executed_fails() {
     client.try_append_to_batch(&admin, &batch_id, &op).unwrap();
     client.try_execute_batch(&admin, &batch_id).unwrap();
     assert_eq!(
-        client.try_execute_batch(&admin, &batch_id).unwrap_err().unwrap(),
+        client
+            .try_execute_batch(&admin, &batch_id)
+            .unwrap_err()
+            .unwrap(),
         Error::BatchNotOpen
     );
 }
@@ -944,7 +990,10 @@ fn test_execute_batch_non_admin_fails() {
     client.try_append_to_batch(&admin, &batch_id, &op).unwrap();
     let other = Address::generate(&env);
     assert_eq!(
-        client.try_execute_batch(&other, &batch_id).unwrap_err().unwrap(),
+        client
+            .try_execute_batch(&other, &batch_id)
+            .unwrap_err()
+            .unwrap(),
         Error::Unauthorized
     );
 }
@@ -960,7 +1009,10 @@ fn test_execute_batch_paused_fails() {
     client.try_append_to_batch(&admin, &batch_id, &op).unwrap();
     client.try_pause(&admin).unwrap();
     assert_eq!(
-        client.try_execute_batch(&admin, &batch_id).unwrap_err().unwrap(),
+        client
+            .try_execute_batch(&admin, &batch_id)
+            .unwrap_err()
+            .unwrap(),
         Error::ContractPaused
     );
 }
@@ -1061,7 +1113,9 @@ fn test_rollback_migration_already_rolled_back_fails() {
         .try_queue_migration(&admin, &a, &b, &s(&env, "k"), &hash(&env, 1), &10_000u64)
         .unwrap()
         .unwrap();
-    client.try_rollback_migration(&admin, &mid, &s(&env, "first")).unwrap();
+    client
+        .try_rollback_migration(&admin, &mid, &s(&env, "first"))
+        .unwrap();
     assert_eq!(
         client
             .try_rollback_migration(&admin, &mid, &s(&env, "second"))
@@ -1143,7 +1197,10 @@ fn test_rollback_batch_not_found() {
     let (env, admin, client) = setup();
     client.try_initialize(&admin).unwrap();
     assert_eq!(
-        client.try_rollback_batch(&admin, &99, &s(&env, "r")).unwrap_err().unwrap(),
+        client
+            .try_rollback_batch(&admin, &99, &s(&env, "r"))
+            .unwrap_err()
+            .unwrap(),
         Error::BatchNotFound
     );
 }
@@ -1157,7 +1214,9 @@ fn test_rollback_batch_already_rolled_back_fails() {
     let b = Address::generate(&env);
     let op = build_op(&env, &a, &b, "k", &hash(&env, 1));
     client.try_append_to_batch(&admin, &batch_id, &op).unwrap();
-    client.try_rollback_batch(&admin, &batch_id, &s(&env, "first")).unwrap();
+    client
+        .try_rollback_batch(&admin, &batch_id, &s(&env, "first"))
+        .unwrap();
     assert_eq!(
         client
             .try_rollback_batch(&admin, &batch_id, &s(&env, "second"))
@@ -1200,8 +1259,12 @@ fn test_rollback_count_increments() {
         .try_queue_migration(&admin, &a, &b, &s(&env, "k2"), &hash(&env, 2), &10_000u64)
         .unwrap()
         .unwrap();
-    client.try_rollback_migration(&admin, &mid1, &s(&env, "r1")).unwrap();
-    client.try_rollback_migration(&admin, &mid2, &s(&env, "r2")).unwrap();
+    client
+        .try_rollback_migration(&admin, &mid1, &s(&env, "r1"))
+        .unwrap();
+    client
+        .try_rollback_migration(&admin, &mid2, &s(&env, "r2"))
+        .unwrap();
     assert_eq!(client.get_rollback_count(), 2);
 }
 
@@ -1235,7 +1298,9 @@ fn test_rollback_migration_after_failure() {
         .unwrap()
         .unwrap();
     // Force a failed execution.
-    client.try_execute_migration(&admin, &mid, &hash(&env, 99)).unwrap();
+    client
+        .try_execute_migration(&admin, &mid, &hash(&env, 99))
+        .unwrap();
     // Rollback should still be allowed on a Failed migration.
     let rid = client
         .try_rollback_migration(&admin, &mid, &s(&env, "reverting"))
@@ -1322,7 +1387,9 @@ fn test_full_failed_migration_with_rollback() {
         .unwrap()
         .unwrap();
     // Bad execution
-    client.try_execute_migration(&admin, &mid, &hash(&env, 99)).unwrap();
+    client
+        .try_execute_migration(&admin, &mid, &hash(&env, 99))
+        .unwrap();
     // Bad validation
     let vid = client
         .try_validate_migration(&admin, &mid, &hash(&env, 99))
@@ -1335,7 +1402,10 @@ fn test_full_failed_migration_with_rollback() {
         .unwrap()
         .unwrap();
     assert_eq!(rid, 0);
-    assert_eq!(client.get_migration(&mid).status, MigrationStatus::RolledBack);
+    assert_eq!(
+        client.get_migration(&mid).status,
+        MigrationStatus::RolledBack
+    );
 }
 
 #[test]
@@ -1346,19 +1416,31 @@ fn test_counters_independent() {
     let b = Address::generate(&env);
 
     // 2 migrations
-    client.try_queue_migration(&admin, &a, &b, &s(&env, "k1"), &hash(&env, 1), &10_000u64).unwrap();
-    client.try_queue_migration(&admin, &a, &b, &s(&env, "k2"), &hash(&env, 2), &10_000u64).unwrap();
+    client
+        .try_queue_migration(&admin, &a, &b, &s(&env, "k1"), &hash(&env, 1), &10_000u64)
+        .unwrap();
+    client
+        .try_queue_migration(&admin, &a, &b, &s(&env, "k2"), &hash(&env, 2), &10_000u64)
+        .unwrap();
     // 1 batch
     let bid = client.try_open_batch(&admin).unwrap().unwrap();
     let op = build_op(&env, &a, &b, "k", &hash(&env, 1));
     client.try_append_to_batch(&admin, &bid, &op).unwrap();
     client.try_execute_batch(&admin, &bid).unwrap();
     // 1 validation
-    client.try_validate_hash(&admin, &0, &hash(&env, 1), &hash(&env, 1)).unwrap();
+    client
+        .try_validate_hash(&admin, &0, &hash(&env, 1), &hash(&env, 1))
+        .unwrap();
     // 3 transfers
-    client.try_transfer_state(&admin, &a, &b, &s(&env, "t1")).unwrap();
-    client.try_transfer_state(&admin, &a, &b, &s(&env, "t2")).unwrap();
-    client.try_record_transfer_failure(&admin, &a, &b, &s(&env, "t3")).unwrap();
+    client
+        .try_transfer_state(&admin, &a, &b, &s(&env, "t1"))
+        .unwrap();
+    client
+        .try_transfer_state(&admin, &a, &b, &s(&env, "t2"))
+        .unwrap();
+    client
+        .try_record_transfer_failure(&admin, &a, &b, &s(&env, "t3"))
+        .unwrap();
 
     assert_eq!(client.get_migration_count(), 2);
     assert_eq!(client.get_batch_count(), 1);
@@ -1379,7 +1461,9 @@ fn test_revoke_then_re_execute_migration_fails() {
         .try_queue_migration(&admin, &a, &b, &s(&env, "k"), &hash(&env, 1), &10_000u64)
         .unwrap()
         .unwrap();
-    client.try_rollback_migration(&admin, &mid, &s(&env, "r")).unwrap();
+    client
+        .try_rollback_migration(&admin, &mid, &s(&env, "r"))
+        .unwrap();
     assert_eq!(
         client
             .try_execute_migration(&admin, &mid, &hash(&env, 1))
@@ -1401,10 +1485,15 @@ fn test_pause_blocks_mutation_paths_only() {
         .unwrap();
     // Rollback is allowed while paused (incident response).
     client.try_pause(&admin).unwrap();
-    client.try_rollback_migration(&admin, &mid, &s(&env, "incident")).unwrap();
+    client
+        .try_rollback_migration(&admin, &mid, &s(&env, "incident"))
+        .unwrap();
     // Reads still work.
     assert_eq!(client.is_paused(), true);
-    assert_eq!(client.get_migration(&mid).status, MigrationStatus::RolledBack);
+    assert_eq!(
+        client.get_migration(&mid).status,
+        MigrationStatus::RolledBack
+    );
 }
 
 #[test]
@@ -1422,7 +1511,9 @@ fn test_unpause_restores_mutation_paths() {
         Error::ContractPaused
     );
     client.try_unpause(&admin).unwrap();
-    client.try_queue_migration(&admin, &a, &b, &s(&env, "k"), &hash(&env, 1), &10_000u64).unwrap();
+    client
+        .try_queue_migration(&admin, &a, &b, &s(&env, "k"), &hash(&env, 1), &10_000u64)
+        .unwrap();
 }
 
 #[test]
@@ -1498,7 +1589,9 @@ fn test_execute_migration_already_failed_fails() {
         .try_queue_migration(&admin, &a, &b, &s(&env, "k"), &hash(&env, 1), &10_000u64)
         .unwrap()
         .unwrap();
-    client.try_execute_migration(&admin, &mid, &hash(&env, 2)).unwrap();
+    client
+        .try_execute_migration(&admin, &mid, &hash(&env, 2))
+        .unwrap();
     assert_eq!(
         client
             .try_execute_migration(&admin, &mid, &hash(&env, 1))
@@ -1535,8 +1628,13 @@ fn test_validate_hash_then_migration() {
         .try_queue_migration(&admin, &a, &b, &s(&env, "k"), &hash(&env, 1), &10_000u64)
         .unwrap()
         .unwrap();
-    client.try_validate_hash(&admin, &mid, &hash(&env, 1), &hash(&env, 1)).unwrap();
-    let id = client.try_validate_migration(&admin, &mid, &hash(&env, 1)).unwrap().unwrap();
+    client
+        .try_validate_hash(&admin, &mid, &hash(&env, 1), &hash(&env, 1))
+        .unwrap();
+    let id = client
+        .try_validate_migration(&admin, &mid, &hash(&env, 1))
+        .unwrap()
+        .unwrap();
     assert!(client.get_validation(&id).passed);
 }
 
@@ -1551,7 +1649,9 @@ fn test_rollback_batch_executed() {
     client.try_append_to_batch(&admin, &bid, &op).unwrap();
     client.try_execute_batch(&admin, &bid).unwrap();
     // Completed batches are still roll-backable for incident response.
-    client.try_rollback_batch(&admin, &bid, &s(&env, "post-mortem")).unwrap();
+    client
+        .try_rollback_batch(&admin, &bid, &s(&env, "post-mortem"))
+        .unwrap();
     assert_eq!(client.get_batch(&bid).status, BatchStatus::RolledBack);
 }
 
@@ -1567,8 +1667,13 @@ fn test_rollback_migration_after_pause_still_allowed() {
         .unwrap()
         .unwrap();
     client.try_pause(&admin).unwrap();
-    client.try_rollback_migration(&admin, &mid, &s(&env, "incident")).unwrap();
-    assert_eq!(client.get_migration(&mid).status, MigrationStatus::RolledBack);
+    client
+        .try_rollback_migration(&admin, &mid, &s(&env, "incident"))
+        .unwrap();
+    assert_eq!(
+        client.get_migration(&mid).status,
+        MigrationStatus::RolledBack
+    );
 }
 
 #[test]
@@ -1579,7 +1684,10 @@ fn test_append_to_batch_unknown_batch_fails() {
     let b = Address::generate(&env);
     let op = build_op(&env, &a, &b, "k", &hash(&env, 1));
     assert_eq!(
-        client.try_append_to_batch(&admin, &99, &op).unwrap_err().unwrap(),
+        client
+            .try_append_to_batch(&admin, &99, &op)
+            .unwrap_err()
+            .unwrap(),
         Error::BatchNotFound
     );
 }
@@ -1598,7 +1706,10 @@ fn test_execute_batch_unknown_batch_fails() {
 fn test_rollback_batch_before_init_fails() {
     let (env, admin, client) = setup();
     assert_eq!(
-        client.try_rollback_batch(&admin, &0, &s(&env, "r")).unwrap_err().unwrap(),
+        client
+            .try_rollback_batch(&admin, &0, &s(&env, "r"))
+            .unwrap_err()
+            .unwrap(),
         Error::NotInitialized
     );
 }

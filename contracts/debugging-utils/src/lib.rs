@@ -15,7 +15,8 @@
 mod test;
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, symbol_short, Address, Env, String, Val, Vec, Map, Symbol,
+    contract, contracterror, contractimpl, symbol_short, Address, Env, Map, String, Symbol, Val,
+    Vec,
 };
 
 const ADMIN: Symbol = symbol_short!("ADMIN");
@@ -147,36 +148,57 @@ impl DebuggingUtils {
     pub fn log_debug(env: Env, message: String) -> Result<(), Error> {
         ensure_initialized(&env)?;
         let sanitized = sanitize_message(&env, &message)?;
-        let mut logs: Vec<String> = env.instance().get(&LOGS).unwrap_or_else(|| Vec::<String>::new(&env));
+        let mut logs: Vec<String> = env
+            .instance()
+            .get(&LOGS)
+            .unwrap_or_else(|| Vec::<String>::new(&env));
         logs.push_back(sanitized);
         env.instance().set(&LOGS, &logs);
-        env.events().publish((symbol_short!("LogEmitted"), symbol_short!("debug")), &message);
+        env.events().publish(
+            (symbol_short!("LogEmitted"), symbol_short!("debug")),
+            &message,
+        );
         Ok(())
     }
 
     pub fn log_warn(env: Env, message: String) -> Result<(), Error> {
         ensure_initialized(&env)?;
         let sanitized = sanitize_message(&env, &message)?;
-        let mut logs: Vec<String> = env.instance().get(&LOGS).unwrap_or_else(|| Vec::<String>::new(&env));
+        let mut logs: Vec<String> = env
+            .instance()
+            .get(&LOGS)
+            .unwrap_or_else(|| Vec::<String>::new(&env));
         logs.push_back(sanitized);
         env.instance().set(&LOGS, &logs);
-        env.events().publish((symbol_short!("LogEmitted"), symbol_short!("warn")), &message);
+        env.events().publish(
+            (symbol_short!("LogEmitted"), symbol_short!("warn")),
+            &message,
+        );
         Ok(())
     }
 
     pub fn log_error(env: Env, message: String) -> Result<(), Error> {
         ensure_initialized(&env)?;
         let sanitized = sanitize_message(&env, &message)?;
-        let mut logs: Vec<String> = env.instance().get(&LOGS).unwrap_or_else(|| Vec::<String>::new(&env));
+        let mut logs: Vec<String> = env
+            .instance()
+            .get(&LOGS)
+            .unwrap_or_else(|| Vec::<String>::new(&env));
         logs.push_back(sanitized);
         env.instance().set(&LOGS, &logs);
-        env.events().publish((symbol_short!("LogEmitted"), symbol_short!("error")), &message);
+        env.events().publish(
+            (symbol_short!("LogEmitted"), symbol_short!("error")),
+            &message,
+        );
         Ok(())
     }
 
     pub fn get_logs(env: Env) -> Result<Vec<String>, Error> {
         ensure_initialized(&env)?;
-        Ok(env.instance().get(&LOGS).unwrap_or_else(|| Vec::<String>::new(&env)))
+        Ok(env
+            .instance()
+            .get(&LOGS)
+            .unwrap_or_else(|| Vec::<String>::new(&env)))
     }
 
     pub fn clear_logs(env: Env) -> Result<(), Error> {
@@ -240,7 +262,11 @@ impl DebuggingUtils {
             return Err(Error::InvalidInput);
         }
         let trace_key: Symbol = symbol_short!("trace", trace_id.clone());
-        let mut trace: Vec<String> = env.storage().persistent().get(&trace_key).unwrap_or_else(|| Vec::<String>::new(&env));
+        let mut trace: Vec<String> = env
+            .storage()
+            .persistent()
+            .get(&trace_key)
+            .unwrap_or_else(|| Vec::<String>::new(&env));
         if trace.len() >= MAX_TRACE_STEPS {
             return Err(Error::CapExceeded);
         }
@@ -254,7 +280,11 @@ impl DebuggingUtils {
             return Err(Error::NotFound);
         }
         let trace_key: Symbol = symbol_short!("trace", trace_id);
-        let trace: Vec<String> = env.storage().persistent().get(&trace_key).ok_or(Error::NotFound)?;
+        let trace: Vec<String> = env
+            .storage()
+            .persistent()
+            .get(&trace_key)
+            .ok_or(Error::NotFound)?;
         Ok(trace)
     }
 
@@ -263,7 +293,11 @@ impl DebuggingUtils {
             return Err(Error::NotFound);
         }
         let trace_key: Symbol = symbol_short!("trace", trace_id);
-        Ok(env.storage().persistent().get(&trace_key).unwrap_or_else(|| Vec::<String>::new(&env)))
+        Ok(env
+            .storage()
+            .persistent()
+            .get(&trace_key)
+            .unwrap_or_else(|| Vec::<String>::new(&env)))
     }
 
     // ── GasProfiler ───────────────────────────────────────────────────────────────
@@ -282,7 +316,9 @@ impl DebuggingUtils {
         let cost = end.saturating_sub(start);
         let result_key: Symbol = symbol_short!("p", fn_name);
         let existing: u64 = env.storage().instance().get(&result_key).unwrap_or(0);
-        env.storage().instance().set(&result_key, &(existing + cost));
+        env.storage()
+            .instance()
+            .set(&result_key, &(existing + cost));
         env.storage().instance().remove(&key);
         Ok(cost)
     }
@@ -300,7 +336,10 @@ impl DebuggingUtils {
     pub fn capture_error(env: Env, code: u32, context: String) -> Result<String, Error> {
         let ledger = env.ledger().sequence();
         let formatted = format_error_internal(&env, code, &context, ledger);
-        let mut history: Vec<String> = env.instance().get(&symbol_short!("EH")).unwrap_or_else(|| Vec::<String>::new(&env));
+        let mut history: Vec<String> = env
+            .instance()
+            .get(&symbol_short!("EH"))
+            .unwrap_or_else(|| Vec::<String>::new(&env));
         if history.len() >= MAX_ERROR_HISTORY {
             history.remove(0);
         }
@@ -310,7 +349,10 @@ impl DebuggingUtils {
     }
 
     pub fn get_error_history(env: Env) -> Result<Vec<String>, Error> {
-        Ok(env.instance().get(&symbol_short!("EH")).unwrap_or_else(|| Vec::<String>::new(&env)))
+        Ok(env
+            .instance()
+            .get(&symbol_short!("EH"))
+            .unwrap_or_else(|| Vec::<String>::new(&env)))
     }
 
     pub fn format_error(env: Env, code: u32, context: String) -> Result<String, Error> {
@@ -319,7 +361,8 @@ impl DebuggingUtils {
     }
 
     pub fn clear_error_history(env: Env) -> Result<(), Error> {
-        env.instance().set(&symbol_short!("EH"), &Vec::<String>::new(&env));
+        env.instance()
+            .set(&symbol_short!("EH"), &Vec::<String>::new(&env));
         Ok(())
     }
 }

@@ -97,9 +97,9 @@ impl UpgradeableContract {
 
         let timelock = get_timelock(&env);
         if timelock == 0 {
-            env.deployer().update_current_contract_wasm(new_hash.clone());
-            env.events()
-                .publish((symbol_short!("upgraded"),), new_hash);
+            env.deployer()
+                .update_current_contract_wasm(new_hash.clone());
+            env.events().publish((symbol_short!("upgraded"),), new_hash);
         } else {
             let current = env.ledger().sequence();
             set_pending_upgrade(&env, &new_hash, current);
