@@ -25,40 +25,44 @@ function enhanceDatabaseError(error, context) {
   return enhanced;
 }
 
-export async function initializeDatabase(options = {}) {
-  if (db) return db;
-
+// Opens a fresh database handle and applies the schema. Used by both the
+// initial boot and runtime credential rotation (where we open the new handle
+// before swapping it in).
+async function openDatabase(options = {}) {
   const {
     filename = path.join(__dirname, 'database.sqlite'),
     schemaPath = path.join(__dirname, 'schema.sql'),
     seedSampleData = process.env.SEED_SAMPLE_DATA !== 'false',
   } = options;
 
+  const handle = await open({
+    filename,
+    driver: sqlite3.Database,
+  });
+
+  const fs = await import('fs/promises');
+  const rawSchema = await fs.readFile(schemaPath, 'utf-8').catch((error) => {
+    throw enhanceDatabaseError(error, `failed to read schema at ${schemaPath}`);
+  });
+
+  const schema = seedSampleData ? rawSchema : stripSeedData(rawSchema);
+
+  await handle.exec(schema).catch((error) => {
+    throw enhanceDatabaseError(
+      error,
+      `failed to apply schema at ${schemaPath}`
+    );
+  });
+
+  return handle;
+}
+
+export async function initializeDatabase(options = {}) {
+  if (db) return db;
+
   try {
-    db = await open({
-      filename,
-      driver: sqlite3.Database,
-    });
-
-    // Read and execute schema
-    const fs = await import('fs/promises');
-    const rawSchema = await fs.readFile(schemaPath, 'utf-8').catch((error) => {
-      throw enhanceDatabaseError(
-        error,
-        `failed to read schema at ${schemaPath}`
-      );
-    });
-
-    const schema = seedSampleData ? rawSchema : stripSeedData(rawSchema);
-
-    await db.exec(schema).catch((error) => {
-      throw enhanceDatabaseError(
-        error,
-        `failed to apply schema at ${schemaPath}`
-      );
-    });
+    db = await openDatabase(options);
     console.log('Database initialized successfully');
-
     return db;
   } catch (error) {
     if (db) {
@@ -68,6 +72,28 @@ export async function initializeDatabase(options = {}) {
     console.error(error.message);
     throw error;
   }
+}
+
+/**
+ * Reconnects the database without a restart (for credential rotation). Opens the
+ * new handle first, swaps it in atomically, then closes the old handle after a
+ * grace period — SQLite has no connection pool to drain, so the delay lets any
+ * request that already captured the old handle finish.
+ */
+export async function refreshDatabaseConnection(options = {}) {
+  const { graceMs = 5000, ...openOptions } = options;
+  const next = await openDatabase(openOptions);
+  const previous = db;
+  db = next; // atomic swap
+
+  if (previous && previous !== next) {
+    const timer = setTimeout(() => {
+      previous.close().catch(() => {});
+    }, graceMs);
+    if (timer.unref) timer.unref();
+  }
+
+  return db;
 }
 
 export function getDatabase() {

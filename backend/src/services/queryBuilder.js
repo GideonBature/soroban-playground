@@ -1,6 +1,12 @@
 // Copyright (c) 2026 StellarDevTools
 // SPDX-License-Identifier: MIT
 
+import {
+  buildCursorClause,
+  buildPageInfo,
+  normalizeSort,
+} from '../utils/cursorPagination.js';
+
 export class QueryBuilder {
   constructor(tableName = 'contract_events') {
     this.tableName = tableName;
@@ -102,19 +108,38 @@ export class QueryBuilder {
     return { select: `SELECT ${selectCols}`, groupBy };
   }
 
-  buildPagination({ limit, sort, cursor }) {
+  buildPagination({ limit, sort, cursor } = {}) {
     const safeLimit = Math.min(limit || 50, this.MAX_LIMIT);
-    const orderBy =
-      sort.length > 0
-        ? `ORDER BY ${sort.map((s) => `${s.field} ${s.order || s.direction || 'ASC'}`).join(', ')}`
-        : 'ORDER BY id ASC';
+
+    // Normalize the sort (always ending on the `id` tiebreaker) so ordering and
+    // cursors stay deterministic.
+    const order = normalizeSort(sort);
+    const orderBy = `ORDER BY ${order
+      .map((s) => `${s.field} ${s.direction}`)
+      .join(', ')}`;
 
     let cursorClause = '';
     if (cursor) {
-      this.params.push(cursor);
-      cursorClause = `id > $${this.params.length}`;
+      // Base64 cursor → WHERE comparison clause (no OFFSET). Keep this builder's
+      // $N placeholder style so the fragment composes with the rest of the SQL.
+      const { clause, params } = buildCursorClause({
+        sort,
+        cursor,
+        paramOffset: this.params.length,
+        placeholder: (index) => `$${index}`,
+      });
+      this.params.push(...params);
+      cursorClause = clause;
     }
 
     return { limitClause: `LIMIT ${safeLimit}`, orderBy, cursorClause };
+  }
+
+  /**
+   * Builds the connection payload (edges + pageInfo) from an over-fetched row
+   * set. Callers request `limit + 1` rows so `hasNextPage` can be detected.
+   */
+  buildPageInfo(rows, limit, sort, cursor = null) {
+    return buildPageInfo(rows, limit, sort, cursor);
   }
 }

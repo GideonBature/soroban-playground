@@ -197,15 +197,21 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
-    compile(input: CompileInput!): CompileResult!
+    # Mutations spawn real work (compile/deploy/invoke) so they carry a heavier
+    # static weight than read fields.
+    compile(input: CompileInput!): CompileResult! @complexity(value: 10)
     compileBatch(contracts: [BatchContractInput!]!): BatchCompileResult!
-    deploy(input: DeployInput!): DeployResult!
-    invoke(input: InvokeInput!): InvokeResult!
+      @complexity(value: 20)
+    deploy(input: DeployInput!): DeployResult! @complexity(value: 10)
+    invoke(input: InvokeInput!): InvokeResult! @complexity(value: 10)
   }
 
   type Subscription {
     compileProgress(requestId: String): CompileProgressEvent!
+      @complexity(value: 5)
     deployProgress(requestId: String): DeployProgressEvent!
+      @complexity(value: 5)
     invokeProgress(requestId: String): InvokeProgressEvent!
+      @complexity(value: 5)
   }
 `;

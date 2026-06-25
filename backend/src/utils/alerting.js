@@ -94,6 +94,9 @@ export class AlertManager {
       high_latency: 'warning',
       deployment_failed: 'error',
       compilation_failed: 'error',
+      invalid_credential: 'critical',
+      credential_rotation_failed: 'error',
+      credential_source_unreadable: 'warning',
     };
     return severityMap[type] || 'info';
   }

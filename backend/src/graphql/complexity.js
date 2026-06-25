@@ -1,39 +1,59 @@
 // Query complexity analysis
-// Each field carries a cost; the total must stay under MAX_COMPLEXITY.
-// Uses graphql-query-complexity with fieldExtensionsEstimator + simpleEstimator.
+// Each field carries a static cost via the schema's @complexity directive; the
+// total must stay under a per-role maximum.
+// Uses graphql-query-complexity with directiveEstimator + simpleEstimator.
 
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const {
-  getComplexity,
-  fieldExtensionsEstimator,
-  simpleEstimator,
-} = require('graphql-query-complexity');
+const nodeRequire = createRequire(import.meta.url);
+const { getComplexity, directiveEstimator, simpleEstimator } = nodeRequire(
+  'graphql-query-complexity'
+);
 
-export const MAX_COMPLEXITY = 100;
+// Per-role maximum complexity. Unknown/guest roles get the strictest limit.
+export const ROLE_LIMITS = {
+  guest: 100,
+  user: 500,
+  admin: 1000,
+};
+
+export const DEFAULT_ROLE = 'guest';
+
+// Backwards-compatible alias for the guest/default ceiling.
+export const MAX_COMPLEXITY = ROLE_LIMITS[DEFAULT_ROLE];
+
+// Estimators run in order; the first to return a value wins. The directive
+// estimator reads @complexity(value: N, multipliers: [...]) straight off the
+// schema SDL (createSchema preserves field astNodes), the simple estimator is
+// the fallback so every undirected field still costs 1.
+const estimators = [
+  directiveEstimator({ name: 'complexity' }),
+  simpleEstimator({ defaultComplexity: 1 }),
+];
 
 /**
- * Returns the complexity score for a parsed query document against the schema.
- * Throws if the score exceeds MAX_COMPLEXITY.
+ * Resolves the maximum allowed complexity for a set of roles.
+ * When a request carries multiple roles, the most permissive limit wins.
  */
-export function analyzeComplexity(schema, document, variables = {}) {
-  const complexity = getComplexity({
+export function getMaxComplexityForRole(roles = []) {
+  const list = Array.isArray(roles) ? roles : [roles];
+  let max = ROLE_LIMITS[DEFAULT_ROLE];
+  for (const role of list) {
+    const limit = ROLE_LIMITS[role];
+    if (typeof limit === 'number' && limit > max) max = limit;
+  }
+  return max;
+}
+
+/**
+ * Computes the static complexity score for a parsed query document.
+ * Pure — it never throws on over-limit; enforcement is the caller's job so the
+ * rejection can carry a precise breakdown.
+ */
+export function computeComplexity(schema, document, variables = {}) {
+  return getComplexity({
     schema,
     query: document,
-    variables,
-    estimators: [
-      // Reads @complexity(value: N, multipliers: [...]) directives from schema
-      fieldExtensionsEstimator(),
-      // Fallback: every field costs 1
-      simpleEstimator({ defaultComplexity: 1 }),
-    ],
+    variables: variables ?? {},
+    estimators,
   });
-
-  if (complexity > MAX_COMPLEXITY) {
-    throw new Error(
-      `Query complexity ${complexity} exceeds maximum allowed complexity of ${MAX_COMPLEXITY}.`
-    );
-  }
-
-  return complexity;
 }

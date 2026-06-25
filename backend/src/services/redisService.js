@@ -64,42 +64,74 @@ class RedisService {
         return;
       }
 
-      this.client = new Redis(REDIS_URL, {
-        maxRetriesPerRequest: 1,
-        connectTimeout: 5000,
-        retryStrategy: (times) => {
-          if (times > this.maxAttempts) {
-            console.error(
-              'Redis connection failed, switching to fallback mode'
-            );
-            this.isFallbackMode = true;
-            return null;
-          }
-          return Math.min(times * 100, 2000);
-        },
-        connectionName: 'soroban-playground',
-      });
-
-      this.client.on('error', (err) => {
-        if (!this.isFallbackMode) {
-          if (err.code !== 'ECONNREFUSED' && err.code !== 'ETIMEDOUT') {
-            console.error('Redis Error:', err.message || err);
-          }
-        }
-        if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
-          this.isFallbackMode = true;
-        }
-      });
-
-      this.client.on('connect', () => {
-        console.log('Connected to Redis');
-        this.isFallbackMode = false;
-        this.defineScripts();
-      });
+      this.client = this._buildClient(REDIS_URL);
     } catch (err) {
       console.error('Failed to initialize Redis:', err.message || err);
       this.isFallbackMode = true;
     }
+  }
+
+  // Creates a configured Redis client with the shared retry strategy and event
+  // handlers. Used by init() and by rotateConnection() during credential
+  // rotation so both paths behave identically.
+  _buildClient(url) {
+    const client = new Redis(url, {
+      maxRetriesPerRequest: 1,
+      connectTimeout: 5000,
+      retryStrategy: (times) => {
+        if (times > this.maxAttempts) {
+          console.error('Redis connection failed, switching to fallback mode');
+          this.isFallbackMode = true;
+          return null;
+        }
+        return Math.min(times * 100, 2000);
+      },
+      connectionName: 'soroban-playground',
+    });
+
+    client.on('error', (err) => {
+      if (!this.isFallbackMode) {
+        if (err.code !== 'ECONNREFUSED' && err.code !== 'ETIMEDOUT') {
+          console.error('Redis Error:', err.message || err);
+        }
+      }
+      if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+        this.isFallbackMode = true;
+      }
+    });
+
+    client.on('connect', () => {
+      console.log('Connected to Redis');
+      this.isFallbackMode = false;
+      this.defineScripts();
+    });
+
+    return client;
+  }
+
+  /**
+   * Reconnects Redis with a new URL without a restart (for credential
+   * rotation). Connects the new client, swaps it in, then gracefully quits the
+   * old one so its in-flight commands complete.
+   */
+  async rotateConnection(url) {
+    const next = this._buildClient(url);
+    const previous = this.client;
+    this.client = next;
+    this.isFallbackMode = false;
+
+    if (previous && previous !== next) {
+      try {
+        await previous.quit();
+      } catch {
+        try {
+          previous.disconnect();
+        } catch {
+          // already gone
+        }
+      }
+    }
+    return next;
   }
 
   defineScripts() {

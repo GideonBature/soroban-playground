@@ -3,12 +3,13 @@
 // Redis-backed caching, GraphiQL playground, and subscription support.
 
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const { createYoga, createSchema } = require('graphql-yoga');
+const nodeRequire = createRequire(import.meta.url);
+const { createYoga, createSchema } = nodeRequire('graphql-yoga');
+const { GraphQLError } = nodeRequire('graphql');
 import { typeDefs } from './schema.js';
 import { resolvers } from './resolvers.js';
 import { createLoaders } from './dataloaders.js';
-import { analyzeComplexity, MAX_COMPLEXITY } from './complexity.js';
+import { computeComplexity, getMaxComplexityForRole } from './complexity.js';
 
 // Build the executable schema once at startup
 const schema = createSchema({ typeDefs, resolvers });
@@ -52,40 +53,60 @@ query Health {
       user: buildUserContext(request),
     }),
 
-    // Query complexity enforcement
+    // Query complexity enforcement.
+    // onExecute runs *before* resolvers, so an over-limit query is rejected
+    // before any resolver — and therefore any DB query — runs. The rejection
+    // carries a precise breakdown; successful queries echo their score in
+    // extensions so clients can see how close they are to the limit.
     plugins: [
       {
-        onExecute({ args }) {
-          try {
-            const score = analyzeComplexity(
-              args.schema,
-              args.document,
-              args.variableValues
-            );
-            // Attach score to extensions so clients can see it
-            args.contextValue._complexityScore = score;
-          } catch (err) {
-            // Re-throw as a GraphQL error so it surfaces in the response
-            throw err;
-          }
-        },
-        onResultProcess({ result, setResult }) {
-          const score = result?.data?.__complexityScore;
-          if (score !== undefined) return;
-          // Append complexity score to extensions
-          const ctx = result?.extensions ?? {};
-          if (result && typeof result === 'object') {
-            setResult({
-              ...result,
-              extensions: {
-                ...ctx,
-                complexity: {
-                  score: result?.data?._complexityScore ?? 0,
-                  max: MAX_COMPLEXITY,
-                },
-              },
+        onExecute({ args, setResultAndStopExecution }) {
+          const roles = args.contextValue?.user?.roles ?? ['guest'];
+          const max = getMaxComplexityForRole(roles);
+          const score = computeComplexity(
+            args.schema,
+            args.document,
+            args.variableValues
+          );
+
+          if (score > max) {
+            const role = Array.isArray(roles) ? roles.join(',') : String(roles);
+            // A bare GraphQLError (no originalError) is not hidden by
+            // maskedErrors, so the breakdown survives in production.
+            setResultAndStopExecution({
+              errors: [
+                new GraphQLError(
+                  `Query complexity ${score} exceeds the maximum allowed complexity of ${max}.`,
+                  {
+                    extensions: {
+                      code: 'QUERY_COMPLEXITY_EXCEEDED',
+                      complexity: { score, max, role },
+                    },
+                  }
+                ),
+              ],
             });
+            return;
           }
+
+          return {
+            onExecuteDone({ result, setResult }) {
+              if (
+                !result ||
+                typeof result !== 'object' ||
+                Array.isArray(result)
+              ) {
+                return;
+              }
+              setResult({
+                ...result,
+                extensions: {
+                  ...(result.extensions ?? {}),
+                  complexity: { score, max },
+                },
+              });
+            },
+          };
         },
       },
     ],

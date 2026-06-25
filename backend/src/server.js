@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import './config/index.js';
+import config from './config/index.js';
 import { corsOptions } from './config/cors.js';
 import apiRouter from './routes/api.js';
 import { startCleanupWorker } from './cleanupWorker.js';
@@ -28,8 +28,15 @@ import sportsPredictionMarketRoute from './routes/sportsPredictionMarket.js';
 import warrantyManagementRoute from './routes/warrantyManagement.js';
 import yieldOptimizerRoute from './routes/yieldOptimizer.js';
 import reitRoute from './routes/reit.js';
+import eventsV1Route from './routes/v1/events.js';
+import credentialsRoute from './routes/credentials.js';
+import credentialRotationService from './services/credentialRotationService.js';
+import redisService from './services/redisService.js';
 import { setupGraphQL } from './graphql/index.js';
-import { initializeDatabase } from './database/connection.js';
+import {
+  initializeDatabase,
+  refreshDatabaseConnection,
+} from './database/connection.js';
 import { compressionMiddleware } from './middleware/compressionMiddleware.js';
 import feeEngineRoute from './routes/feeEngine.js';
 import featureFlagsRoute from './routes/featureFlags.js';
@@ -100,6 +107,8 @@ app.use('/api/yield-optimizer', yieldOptimizerRoute);
 app.use('/api/reit', reitRoute);
 app.use('/api/fee-engine', feeEngineRoute);
 app.use('/api/feature-flags', featureFlagsRoute);
+app.use('/api/v1/events', eventsV1Route);
+app.use('/api/credentials', credentialsRoute);
 app.use('/metrics', metricsRoute);
 
 // GraphQL Endpoint
@@ -197,6 +206,38 @@ app.get('/api/health', (_req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+// Wires runtime secret rotation onto the live DB/Redis connections. Opt-in: only
+// active when a rotation source or encryption key is configured, so default
+// behaviour is unchanged.
+function setupCredentialRotation() {
+  const { intervalMs, graceMs, sourceFile, encryptionKey } =
+    config.credentialRotation;
+  if (!sourceFile && !encryptionKey && !intervalMs) return;
+
+  credentialRotationService.configure({
+    encryptionKey,
+    sourceFile,
+    intervalMs,
+    graceMs,
+    initial: {
+      DATABASE_URL: process.env.DATABASE_URL,
+      REDIS_URL: process.env.REDIS_URL,
+    },
+  });
+
+  credentialRotationService.onRotate('REDIS_URL', (url) =>
+    redisService.rotateConnection(url)
+  );
+  credentialRotationService.onRotate('DATABASE_URL', (value) =>
+    refreshDatabaseConnection({
+      filename: value.replace(/^sqlite:\/\//, ''),
+      graceMs,
+    })
+  );
+
+  credentialRotationService.start();
+}
+
 // WebSocket + compile service + database init
 initializeDatabase()
   .then(() => {
@@ -205,6 +246,7 @@ initializeDatabase()
     oracleWorkerPool.start();
     startCleanupWorker();
     featureFlagService.initSubscriber();
+    setupCredentialRotation();
 
     // Start listening
     server.listen(PORT, () => {

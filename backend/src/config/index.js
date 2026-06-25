@@ -27,6 +27,9 @@ const DEFAULTS = {
   TRACING_SAMPLE_RATE_SUCCESS: 0.1,
   TRACING_SAMPLE_RATE_ERRORS: 1.0,
   TRACING_SLOW_REQUEST_THRESHOLD_MS: 5000,
+  CREDENTIAL_ROTATION_INTERVAL_MS: 0,
+  CREDENTIAL_SOURCE_FILE: undefined,
+  CREDENTIAL_ROTATION_GRACE_MS: 5000,
 };
 
 const CONFIG_WARNING_PREFIX = 'CONFIG WARNING';
@@ -259,6 +262,31 @@ export function createConfig(env = process.env, options = {}) {
         warnings,
         { min: 1 }
       ),
+    },
+    credentialRotation: {
+      // Periodic source-file poll interval; 0 disables the periodic check.
+      intervalMs: toInt(
+        env.CREDENTIAL_ROTATION_INTERVAL_MS,
+        DEFAULTS.CREDENTIAL_ROTATION_INTERVAL_MS,
+        'CREDENTIAL_ROTATION_INTERVAL_MS',
+        warnings,
+        { min: 0 }
+      ),
+      // Grace period before closing the old DB handle after a rotation.
+      graceMs: toInt(
+        env.CREDENTIAL_ROTATION_GRACE_MS,
+        DEFAULTS.CREDENTIAL_ROTATION_GRACE_MS,
+        'CREDENTIAL_ROTATION_GRACE_MS',
+        warnings,
+        { min: 0 }
+      ),
+      // Optional JSON file holding the rotatable credentials.
+      sourceFile: cleanString(
+        env.CREDENTIAL_SOURCE_FILE,
+        DEFAULTS.CREDENTIAL_SOURCE_FILE
+      ),
+      // AES key for the in-memory credential store (random per-process if unset).
+      encryptionKey: cleanString(env.CREDENTIAL_ENCRYPTION_KEY, undefined),
     },
   };
 
