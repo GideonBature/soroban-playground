@@ -90,6 +90,8 @@ async function openDatabase(options = {}) {
       }
     };
   });
+  const { withCacheBusting } = await import('./cacheInterceptor.js');
+  const wrappedHandle = withCacheBusting(handle);
 
   const fs = await import('fs/promises');
   const rawSchema = await fs.readFile(schemaPath, 'utf-8').catch((error) => {

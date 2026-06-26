@@ -23,13 +23,16 @@ class DatabaseService {
     }
   }
 
-  /** Dynamically import sqlite3 and open the database. */
   async connect() {
     const { default: sqlite3 } = await import('sqlite3');
+    const { withCacheBusting } = await import('../database/cacheInterceptor.js');
     return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
+      const dbInstance = new sqlite3.Database(this.dbPath, (err) => {
         if (err) reject(err);
-        else resolve();
+        else {
+          this.db = withCacheBusting(dbInstance);
+          resolve();
+        }
       });
     });
   }
