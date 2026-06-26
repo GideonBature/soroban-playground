@@ -16,7 +16,7 @@ export async function getDatabase() {
 
   const SQL = await initSqlJs({
     locateFile: (file) =>
-      path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file),
+      path.join(process.cwd(), '..', 'node_modules', 'sql.js', 'dist', file),
   });
 
   dbPath = process.env.MIGRATION_DB_PATH || DEFAULT_DB_PATH;

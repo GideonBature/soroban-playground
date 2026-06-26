@@ -32,6 +32,8 @@ export async function getDatabase() {
   }
 
   db = databaseBytes ? new SQL.Database(databaseBytes) : new SQL.Database();
+  const { withCacheBusting } = await import('../database/cacheInterceptor.js');
+  db = withCacheBusting(db);
   db.run('PRAGMA foreign_keys = ON;');
   return db;
 }

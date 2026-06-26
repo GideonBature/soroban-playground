@@ -1,7 +1,13 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import redisService from '../services/redisService.js';
 import oracleProofQueueService from '../services/oracleProofQueueService.js';
 import apiKeyService from '../services/apiKeyService.js';
+import { seedDatabase } from '../../scripts/seed.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -211,6 +217,19 @@ router.get('/rate-limits/stats', async (req, res) => {
       recentViolations: formattedViolations,
       fallbackMode: redisService.isFallbackMode,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Clean and reset database route
+router.post('/reset-database', async (req, res) => {
+  try {
+    const { users = 50, projects = 200, files = 500 } = req.body;
+    const dbPath = process.env.MIGRATION_DB_PATH || path.join(__dirname, '../../data/soroban_playground.sqlite');
+
+    await seedDatabase({ dbPath, users, projects, files });
+    res.json({ success: true, message: 'Database reset and seeded successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

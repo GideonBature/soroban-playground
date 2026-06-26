@@ -277,6 +277,21 @@ class RedisService {
     return await this.client.set(key, value, 'EX', ttl);
   }
 
+  async setNX(key, value, ttlSeconds) {
+    try {
+      if (this.client && !this.isFallbackMode) {
+        return await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
+      }
+    } catch (err) {
+      console.warn('Redis setNX error, using memory fallback:', err.message);
+    }
+    if (!this.localCache.has(key)) {
+      this.localCache.set(key, value, { ttl: ttlSeconds * 1000 });
+      return 'OK';
+    }
+    return null;
+  }
+
   async delete(key) {
     if (this.isFallbackMode || !this.client) {
       this.localCache.delete?.(key);

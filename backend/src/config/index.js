@@ -30,6 +30,12 @@ const DEFAULTS = {
   CREDENTIAL_ROTATION_INTERVAL_MS: 0,
   CREDENTIAL_SOURCE_FILE: undefined,
   CREDENTIAL_ROTATION_GRACE_MS: 5000,
+  MEMORY_HEAP_LIMIT_MB: 512,
+  MEMORY_HEAP_THRESHOLD_PCT: 85,
+  HEAP_DUMP_DIR: '/tmp/heapdumps',
+  HEAP_DUMP_INTERVAL_MS: 30000,
+  SOROBAN_RPC_URL: 'https://soroban-testnet.stellar.org',
+  INDEXER_POLL_INTERVAL_MS: 5000,
 };
 
 const CONFIG_WARNING_PREFIX = 'CONFIG WARNING';
@@ -287,6 +293,44 @@ export function createConfig(env = process.env, options = {}) {
       ),
       // AES key for the in-memory credential store (random per-process if unset).
       encryptionKey: cleanString(env.CREDENTIAL_ENCRYPTION_KEY, undefined),
+    },
+    memory: {
+      heapLimitMb: toInt(
+        env.MEMORY_HEAP_LIMIT_MB,
+        DEFAULTS.MEMORY_HEAP_LIMIT_MB,
+        'MEMORY_HEAP_LIMIT_MB',
+        warnings,
+        { min: 64 }
+      ),
+      heapThresholdPct: toInt(
+        env.MEMORY_HEAP_THRESHOLD_PCT,
+        DEFAULTS.MEMORY_HEAP_THRESHOLD_PCT,
+        'MEMORY_HEAP_THRESHOLD_PCT',
+        warnings,
+        { min: 1, max: 100 }
+      ),
+      heapDumpDir: cleanString(env.HEAP_DUMP_DIR, DEFAULTS.HEAP_DUMP_DIR),
+      heapDumpIntervalMs: toInt(
+        env.HEAP_DUMP_INTERVAL_MS,
+        DEFAULTS.HEAP_DUMP_INTERVAL_MS,
+        'HEAP_DUMP_INTERVAL_MS',
+        warnings,
+        { min: 1000 }
+      ),
+      heapDumpS3Bucket: cleanString(env.HEAP_DUMP_S3_BUCKET, undefined),
+    },
+    indexer: {
+      rpcUrl: cleanString(env.SOROBAN_RPC_URL, DEFAULTS.SOROBAN_RPC_URL),
+      contractIds: cleanString(env.CONTRACT_IDS_CSV, '')
+        .split(',')
+        .filter(Boolean),
+      pollIntervalMs: toInt(
+        env.INDEXER_POLL_INTERVAL_MS,
+        DEFAULTS.INDEXER_POLL_INTERVAL_MS,
+        'INDEXER_POLL_INTERVAL_MS',
+        warnings,
+        { min: 1000 }
+      ),
     },
   };
 
