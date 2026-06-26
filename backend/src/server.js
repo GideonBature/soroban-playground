@@ -41,6 +41,8 @@ import { compressionMiddleware } from './middleware/compressionMiddleware.js';
 import feeEngineRoute from './routes/feeEngine.js';
 import featureFlagsRoute from './routes/featureFlags.js';
 import featureFlagService from './services/featureFlagService.js';
+import serviceRegistryRoute from './routes/serviceRegistry.js';
+import { registerSelf } from './services/serviceRegistry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,6 +110,7 @@ app.use('/api/reit', reitRoute);
 app.use('/api/fee-engine', feeEngineRoute);
 app.use('/api/feature-flags', featureFlagsRoute);
 app.use('/api/v1/events', eventsV1Route);
+app.use('/api/registry', serviceRegistryRoute);
 app.use('/api/credentials', credentialsRoute);
 app.use('/metrics', metricsRoute);
 
@@ -247,6 +250,8 @@ initializeDatabase()
     startCleanupWorker();
     featureFlagService.initSubscriber();
     setupCredentialRotation();
+
+    registerSelf();
 
     // Start listening
     server.listen(PORT, () => {
