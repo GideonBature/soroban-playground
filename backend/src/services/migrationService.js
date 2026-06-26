@@ -555,3 +555,86 @@ export async function getMigrationDashboard() {
     migrations: applied,
   };
 }
+
+/**
+ * Reads the first `-- @phase: expand|contract` comment from a migration SQL file.
+ * Returns 'expand', 'contract', or null if no phase tag is present.
+ */
+export function detectPhase(sqlContent) {
+  const m = sqlContent.match(/^--\s*@phase:\s*(expand|contract)/m);
+  return m ? m[1] : null;
+}
+
+/**
+ * Returns an array of warning strings for DDL statements that require a full
+ * table rewrite in SQLite (e.g. ALTER TABLE ADD COLUMN NOT NULL without DEFAULT).
+ */
+export function detectLockingSQL(sql) {
+  const warnings = [];
+  if (/ALTER\s+TABLE\s+\S+\s+ADD\s+COLUMN\s+.+NOT\s+NULL(?!\s+DEFAULT)/i.test(sql)) {
+    warnings.push(
+      'ADD COLUMN NOT NULL without DEFAULT requires a full table rewrite in SQLite'
+    );
+  }
+  return warnings;
+}
+
+/**
+ * Applies pending migrations filtered by phase.
+ *   phase='expand'   → only migrations tagged `-- @phase: expand`
+ *   phase='contract' → only migrations tagged `-- @phase: contract`
+ *   phase=null       → all pending (same as applyPendingMigrations, backward compat)
+ */
+export async function applyPendingMigrationsPhased(phase = null, { dryRun = false } = {}) {
+  const files = await readMigrationFiles();
+  const ups = files
+    .filter((f) => f.direction === 'up')
+    .sort((a, b) => a.version - b.version);
+  const applied = await getAppliedMigrations();
+  const appliedVersions = new Set(applied.map((m) => m.version));
+  const results = [];
+
+  for (const f of ups) {
+    if (appliedVersions.has(f.version)) continue;
+
+    let sql;
+    try {
+      sql = await fsp.readFile(f.fullPath, 'utf8');
+    } catch (err) {
+      results.push({ status: 'failed', version: f.version, error: err.message, phase: null });
+      break;
+    }
+
+    const filePhase = detectPhase(sql);
+    if (phase !== null && filePhase !== phase) continue;
+
+    const lockWarns = detectLockingSQL(sql);
+    lockWarns.forEach((w) =>
+      console.warn(`[migration ${f.version}] LOCK WARNING: ${w}`)
+    );
+
+    try {
+      const r = await applyMigration(f.version, { dryRun });
+      results.push({ ...r, phase: filePhase, lockWarnings: lockWarns });
+    } catch (err) {
+      results.push({
+        status: 'failed',
+        version: f.version,
+        error: err.message,
+        phase: filePhase,
+      });
+      break;
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Initialises the migration tracking table and applies all pending migrations.
+ * Intended to be called at server startup before the HTTP server begins listening.
+ */
+export async function runStartupMigrations() {
+  await initializeMigrationService();
+  return applyPendingMigrations({ dryRun: false });
+}

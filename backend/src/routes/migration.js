@@ -1,5 +1,6 @@
 import express from 'express';
 import MigrationService from '../services/migrationService.js';
+import { applyPendingMigrationsPhased } from '../services/migrationService.js';
 
 const router = express.Router();
 
@@ -132,6 +133,32 @@ router.get('/validate', async (req, res) => {
       success: false,
       error: error.message,
     });
+  }
+});
+
+// Run only migrations tagged with a specific deployment phase (expand or contract).
+// Supports the expand-and-contract zero-downtime deployment pattern.
+router.post('/phase', async (req, res) => {
+  try {
+    const { phase, dryRun = false } = req.body;
+    if (!['expand', 'contract'].includes(phase)) {
+      return res.status(400).json({
+        success: false,
+        error: 'phase must be "expand" or "contract"',
+      });
+    }
+    const results = await applyPendingMigrationsPhased(phase, { dryRun });
+    res.json({
+      success: true,
+      data: {
+        phase,
+        dryRun,
+        results,
+        executed: results.filter((r) => r.status === 'applied').length,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

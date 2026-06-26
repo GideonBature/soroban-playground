@@ -42,6 +42,9 @@ import { compressionMiddleware } from './middleware/compressionMiddleware.js';
 import feeEngineRoute from './routes/feeEngine.js';
 import featureFlagsRoute from './routes/featureFlags.js';
 import featureFlagService from './services/featureFlagService.js';
+import { startMemoryLeakDetector } from './services/memoryLeakDetector.js';
+import { contractEventIndexer } from './services/contractEventIndexer.js';
+import { runStartupMigrations } from './services/migrationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -287,13 +290,24 @@ function setupCredentialRotation() {
 
 // WebSocket + compile service + database init
 initializeDatabase()
-  .then(() => {
+  .then(async () => {
     setupWebsocketServer(server);
     initializeCompileService().catch(console.error);
     oracleWorkerPool.start();
     startCleanupWorker();
     featureFlagService.initSubscriber();
     setupCredentialRotation();
+    startMemoryLeakDetector();
+
+    if (config.indexer.contractIds.length > 0) {
+      contractEventIndexer.start().catch(console.error);
+    }
+
+    // Apply pending database migrations before accepting requests so the
+    // schema is always consistent when the server begins listening.
+    await runStartupMigrations().catch((err) =>
+      console.error('Startup migrations failed:', err.message)
+    );
 
     // Start listening
     server.listen(PORT, () => {
