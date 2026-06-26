@@ -242,3 +242,14 @@ CREATE TABLE IF NOT EXISTS flag_cohorts (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(flag_key, cohort_id)
 );
+
+-- Missing indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_treasury_proposals_status ON treasury_proposals(status);
+CREATE INDEX IF NOT EXISTS idx_treasury_proposals_expires_at ON treasury_proposals(expires_at);
+CREATE INDEX IF NOT EXISTS idx_treasury_proposals_execute_after ON treasury_proposals(execute_after);
+CREATE INDEX IF NOT EXISTS idx_treasury_approvals_proposal_id ON treasury_approvals(proposal_id);
+CREATE INDEX IF NOT EXISTS idx_treasury_history_event_type ON treasury_history(event_type);
+CREATE INDEX IF NOT EXISTS idx_feature_flags_enabled ON feature_flags(enabled);
+CREATE INDEX IF NOT EXISTS idx_flag_cohorts_flag_key ON flag_cohorts(flag_key);
+CREATE INDEX IF NOT EXISTS idx_flag_cohorts_cohort_id ON flag_cohorts(cohort_id);
+

@@ -3,6 +3,7 @@
 
 import express from 'express';
 import http from 'http';
+import https from 'https';
 import cors from 'cors';
 import morgan from 'morgan';
 import os from 'os';
@@ -46,7 +47,46 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const server = http.createServer(app);
+
+// TLS/SSL Hardening configuration
+const httpsOptions = {
+  minVersion: 'TLSv1.2',
+  maxVersion: 'TLSv1.3',
+  ciphers: [
+    'TLS_AES_256_GCM_SHA384',
+    'TLS_CHACHA20_POLY1305_SHA256',
+    'TLS_AES_128_GCM_SHA256',
+    'ECDHE-RSA-AES256-GCM-SHA384',
+    'ECDHE-ECDSA-AES256-GCM-SHA384',
+    'ECDHE-RSA-AES128-GCM-SHA256',
+    'ECDHE-ECDSA-AES128-GCM-SHA256',
+    'ECDHE-ECDSA-CHACHA20-POLY1305',
+    'ECDHE-RSA-CHACHA20-POLY1305',
+    'DHE-RSA-AES256-GCM-SHA384',
+    'DHE-RSA-AES128-GCM-SHA256'
+  ].join(':'),
+  honorCipherOrder: true,
+  ecdhCurve: 'X25519:P-256:P-384',
+};
+
+// Attempt to load SSL certificates
+let hasCertificates = false;
+try {
+  if (process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH) {
+    httpsOptions.key = fs.readFileSync(process.env.SSL_KEY_PATH);
+    httpsOptions.cert = fs.readFileSync(process.env.SSL_CERT_PATH);
+    hasCertificates = true;
+  } else if (fs.existsSync(path.join(__dirname, 'cert.pem')) && fs.existsSync(path.join(__dirname, 'key.pem'))) {
+    httpsOptions.key = fs.readFileSync(path.join(__dirname, 'key.pem'));
+    httpsOptions.cert = fs.readFileSync(path.join(__dirname, 'cert.pem'));
+    hasCertificates = true;
+  }
+} catch (err) {
+  console.warn('Could not load SSL certificates:', err.message);
+}
+
+// Fallback to HTTP if no certs are provided, otherwise use HTTPS
+const server = hasCertificates ? https.createServer(httpsOptions, app) : http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Load package.json for version info
@@ -70,6 +110,13 @@ app.use(morgan('combined'));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 app.use(compressionMiddleware);
+
+// Strict Transport Security (HSTS) headers
+// max-age=63072000 is 2 years, required for Qualys SSL Labs A+ and HSTS preload list
+app.use((req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  next();
+});
 
 // Latency tracking middleware
 app.use((req, res, next) => {
@@ -250,7 +297,8 @@ initializeDatabase()
 
     // Start listening
     server.listen(PORT, () => {
-      console.log(`✅  Backend server running on http://localhost:${PORT}`);
+      const protocol = hasCertificates ? 'https' : 'http';
+      console.log(`✅  Backend server running on ${protocol}://localhost:${PORT}`);
     });
   })
   .catch((err) => {
