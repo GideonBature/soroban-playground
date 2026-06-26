@@ -15,6 +15,11 @@ import redisService from './redisService.js';
  * }
  */
 
+// Maximum window between request creation and expiry. Prevents clients from
+// setting expiry years in the future, which would keep nonce keys in Redis
+// indefinitely and allow unbounded replay-prevention storage growth.
+const MAX_EXPIRY_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 class SignatureValidationService {
   /**
    * Builds a deterministic string representation of the request fields.
@@ -41,8 +46,11 @@ class SignatureValidationService {
    * that cheap operations gate the more expensive ED25519 verify call.
    */
   async verify({ callerAddress, contractId, method, params, nonce, expiry, signature }) {
-    // 1. Reject stale requests immediately (no crypto work needed)
-    if (expiry < Date.now()) {
+    // 1. Reject stale requests immediately (no crypto work needed).
+    //    Also reject requests whose expiry window exceeds the maximum to prevent
+    //    clients from keeping nonce keys in Redis for an unbounded duration.
+    const now = Date.now();
+    if (expiry < now || expiry - now > MAX_EXPIRY_WINDOW_MS) {
       return { valid: false, reason: 'expired' };
     }
 
@@ -65,10 +73,15 @@ class SignatureValidationService {
     }
 
     // 4. Atomically claim the nonce (set-if-not-exists) to prevent replay attacks.
-    //    TTL is derived from the remaining time until expiry so the nonce key
-    //    expires at the same time as the request itself.
+    //    TTL is capped at MAX_EXPIRY_WINDOW_MS as a second line of defence so that
+    //    even if the window check above is relaxed, Redis keys never live longer than
+    //    24 hours.
     const nonceKey = `sig:nonce:${callerAddress}:${nonce}`;
-    const ttlSeconds = Math.max(1, Math.ceil((expiry - Date.now()) / 1000));
+    const remainingMs = expiry - Date.now();
+    const ttlSeconds = Math.min(
+      Math.ceil(MAX_EXPIRY_WINDOW_MS / 1000),
+      Math.max(1, Math.ceil(remainingMs / 1000))
+    );
     const stored = await redisService.setNX(nonceKey, '1', ttlSeconds);
     if (!stored) {
       return { valid: false, reason: 'replay' };

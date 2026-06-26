@@ -80,6 +80,14 @@ describe('signatureValidationService.verify()', () => {
     expect(result).toEqual({ valid: false, reason: 'expired' });
   });
 
+  it('returns { valid: false, reason: "expired" } when expiry window exceeds 24 hours', async () => {
+    // Prevents clients from keeping nonce keys in Redis indefinitely
+    const payload = buildPayload({ expiry: Date.now() + 25 * 60 * 60 * 1000 });
+    const signature = signPayload(payload);
+    const result = await signatureValidationService.verify({ ...payload, signature });
+    expect(result).toEqual({ valid: false, reason: 'expired' });
+  });
+
   it('returns { valid: false, reason: "replay" } when nonce has been used', async () => {
     redisService.setNX.mockResolvedValue(null); // NX condition not met → key already exists
     const payload = buildPayload();
