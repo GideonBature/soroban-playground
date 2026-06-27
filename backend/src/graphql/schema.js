@@ -175,6 +175,52 @@ export const typeDefs = /* GraphQL */ `
     timestamp: String!
   }
 
+  # ── Projects / Files / Templates (issue #724) ────────────────────────────────
+  # These types back the DataLoader-batched resolvers. The files and project
+  # / template relations are resolved via per-request DataLoaders so an N+1
+  # fan-out collapses to a single batched SQL query per relation.
+  type Project {
+    id: ID!
+    title: String!
+    description: String!
+    category: String!
+    status: String!
+    creatorId: Int!
+    creatorName: String!
+    fundingGoal: Float!
+    currentFunding: Float!
+    completionRate: Float!
+    tags: [String!]!
+    files: [File!]!
+  }
+
+  type File {
+    id: ID!
+    projectId: Int
+    templateId: Int
+    uploaderId: Int!
+    filename: String!
+    filepath: String!
+    mimetype: String!
+    sizeBytes: Int!
+    project: Project
+    template: Template
+  }
+
+  type Template {
+    id: ID!
+    dirName: String!
+    name: String!
+    description: String!
+    category: String!
+    complexity: String!
+    deploymentStatus: String!
+    tags: [String!]!
+    functionalities: [String!]!
+    features: [String!]!
+    files: [File!]!
+  }
+
   # ── Complexity directive ──────────────────────────────────────────────────────
   directive @complexity(value: Int!, multipliers: [String!]) on FIELD_DEFINITION
 
@@ -191,6 +237,13 @@ export const typeDefs = /* GraphQL */ `
     # Invoke — admin only
     invokeLog(contractId: String!, first: Int, after: String): JSON
       @complexity(value: 5)
+
+    # Projects / Files / Templates (issue #724)
+    projects: [Project!]! @complexity(value: 3)
+    project(id: ID!): Project @complexity(value: 2)
+    files: [File!]! @complexity(value: 3)
+    templates: [Template!]! @complexity(value: 3)
+    template(id: ID!): Template @complexity(value: 2)
 
     # Health
     health: String! @complexity(value: 1)
