@@ -1,19 +1,24 @@
 import express from 'express';
 import request from 'supertest';
 
-// Import the server app to test the health endpoint
-import app from '../../src/server.js';
-import { errorHandler } from '../../src/middleware/errorHandler.js';
+import healthRouter, { healthHandler } from '../src/routes/health.js';
+import { errorHandler } from '../src/middleware/errorHandler.js';
 
-// Create a test app with just the health route
-const testApp = express();
-testApp.use(express.json());
-testApp.use('/api', app);
-testApp.use(errorHandler);
+function createTestApp() {
+  const app = express();
+  app.use(express.json());
+  app.use('/health', healthRouter);
+  app.get('/api/health', healthHandler);
+  app.use(errorHandler);
+  return app;
+}
 
-describe('Health Check Endpoint', () => {
-  it('returns 200 status and health information', async () => {
-    const res = await request(testApp).get('/api/health');
+describe('Health Check and Readiness Probes', () => {
+  const testApp = createTestApp();
+
+  it('GET /health returns 200 with system stats', async () => {
+    const res = await request(testApp).get('/health');
+
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data).toHaveProperty('status');
@@ -24,29 +29,50 @@ describe('Health Check Endpoint', () => {
     expect(res.body.data).toHaveProperty('cpu');
     expect(res.body.data).toHaveProperty('memory');
     expect(res.body.data).toHaveProperty('runtime');
+    expect(res.body.data).toHaveProperty('dependencies');
+    expect(res.body.data.dependencies).toHaveProperty('database');
+    expect(res.body.data.dependencies).toHaveProperty('redis');
+    expect(res.body.data.dependencies).toHaveProperty('sorobanCli');
   });
 
-  it('returns degraded status when memory usage is high', async () => {
-    // Mock memory usage to be high to test degraded status
-    // Since we can't easily mock os.totalmem() and os.freemem(),
-    // we'll test the structure and ensure it's not an error
+  it('GET /api/health remains backward compatible', async () => {
     const res = await request(testApp).get('/api/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveProperty('status');
+    expect(res.body.data).toHaveProperty('memory');
+    expect(res.body.data).toHaveProperty('cpu');
+  });
+
+  it('GET /health/live returns liveness probe payload', async () => {
+    const res = await request(testApp).get('/health/live');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.status).toBe('ok');
+    expect(res.body.data.probe).toBe('live');
+    expect(res.body.data).toHaveProperty('timestamp');
+    expect(res.body.data).toHaveProperty('uptime');
+  });
+
+  it('GET /health/ready returns readiness probe payload', async () => {
+    const res = await request(testApp).get('/health/ready');
+
+    expect([200, 503]).toContain(res.status);
+    expect(res.body.data.probe).toBe('ready');
+    expect(res.body.data).toHaveProperty('status');
+    expect(res.body.data).toHaveProperty('checks');
+    expect(res.body.data.checks).toHaveProperty('database');
+    expect(res.body.data.checks).toHaveProperty('redis');
+    expect(res.body.data.checks).toHaveProperty('sorobanCli');
+  });
+
+  it('reports ok or degraded status based on resource usage', async () => {
+    const res = await request(testApp).get('/health');
+
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(['ok', 'degraded']).toContain(res.body.data.status);
-  });
-
-  it('handles errors gracefully and returns 500', async () => {
-    // We can't easily trigger the error case in tests, but we can verify
-    // the error handling structure exists by checking the response format
-    const res = await request(testApp).get('/api/health');
-    expect(res.status).toBe(200);
-    // The error case would be 500, but we can't easily trigger it in tests
-    // so we verify the structure is correct for both success and error cases
-    if (res.body.success) {
-      expect(res.body.data).toHaveProperty('status');
-      expect(res.body.data).toHaveProperty('version');
-      expect(res.body.data).toHaveProperty('timestamp');
-    }
   });
 });

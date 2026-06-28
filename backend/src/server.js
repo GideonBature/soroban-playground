@@ -6,7 +6,6 @@ import http from 'http';
 import https from 'https';
 import cors from 'cors';
 import morgan from 'morgan';
-import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -45,6 +44,7 @@ import feeEngineRoute from './routes/feeEngine.js';
 import featureFlagsRoute from './routes/featureFlags.js';
 import featureFlagService from './services/featureFlagService.js';
 import { LedgerSyncService } from './services/ledgerSyncService.js';
+import healthRouter, { healthHandler } from './routes/health.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -98,22 +98,6 @@ const server = hasCertificates
   ? https.createServer(httpsOptions, app)
   : http.createServer(app);
 const PORT = process.env.PORT || 5000;
-
-// Load package.json for version info
-let packageJson = {};
-try {
-  packageJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')
-  );
-} catch {
-  try {
-    packageJson = JSON.parse(
-      fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8')
-    );
-  } catch {
-    packageJson = { version: 'unknown', name: 'soroban-playground-backend' };
-  }
-}
 
 // Basic middleware
 app.use(morgan('combined'));
@@ -180,93 +164,13 @@ app.use('/metrics', metricsRoute);
 setupGraphQL(app);
 setupSwagger(app);
 
-// ─── Health Check Helpers ──────────────────────────────────────────────────────
-
-function getCpuUsage() {
-  return os.cpus().map((cpu, index) => {
-    const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-    const idle = cpu.times.idle;
-    return {
-      core: index,
-      model: cpu.model,
-      speedMHz: cpu.speed,
-      usedPercent: total > 0 ? +((1 - idle / total) * 100).toFixed(1) : 0,
-    };
-  });
-}
-
-function getMemoryInfo() {
-  const totalBytes = os.totalmem();
-  const freeBytes = os.freemem();
-  const usedBytes = totalBytes - freeBytes;
-  const toMB = (b) => +(b / 1024 / 1024).toFixed(2);
-  return {
-    totalMB: toMB(totalBytes),
-    freeMB: toMB(freeBytes),
-    usedMB: toMB(usedBytes),
-    usedPercent: +((usedBytes / totalBytes) * 100).toFixed(1),
-  };
-}
-
-function getUptimeInfo() {
-  const formatSeconds = (s) => {
-    const d = Math.floor(s / 86400);
-    const h = Math.floor((s % 86400) / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = Math.floor(s % 60);
-    return [d && `${d}d`, h && `${h}h`, m && `${m}m`, `${sec}s`]
-      .filter(Boolean)
-      .join(' ');
-  };
-  return {
-    processSec: Math.floor(process.uptime()),
-    processHuman: formatSeconds(process.uptime()),
-    systemSec: Math.floor(os.uptime()),
-    systemHuman: formatSeconds(os.uptime()),
-  };
-}
-
-function getRuntimeInfo() {
-  return {
-    node: process.version,
-    platform: process.platform,
-    arch: process.arch,
-    pid: process.pid,
-  };
-}
-
-// ─── Health Check Endpoint ────────────────────────────────────────────────────
+// ─── Health Check and Readiness Probes ────────────────────────────────────────
 app.get('/', (_req, res) => {
   res.status(200).send('Soroban Playground Backend API is running.');
 });
 
-app.get('/api/health', (_req, res) => {
-  try {
-    const memory = getMemoryInfo();
-    const status = memory.usedPercent > 95 ? 'degraded' : 'ok';
-    const payload = {
-      status,
-      version: packageJson.version ?? 'unknown',
-      service: packageJson.name ?? 'soroban-playground-backend',
-      timestamp: new Date().toISOString(),
-      uptime: getUptimeInfo(),
-      cpu: getCpuUsage(),
-      memory,
-      runtime: getRuntimeInfo(),
-    };
-    return res.status(200).json({ success: true, data: payload });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      data: {
-        status: 'error',
-        version: packageJson.version ?? 'unknown',
-        timestamp: new Date().toISOString(),
-        error: err.message,
-      },
-    });
-  }
-});
+app.use('/health', healthRouter);
+app.get('/api/health', healthHandler);
 
 // Error handlers (must be after routes)
 app.use(notFoundHandler);
