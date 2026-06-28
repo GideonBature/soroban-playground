@@ -28,11 +28,8 @@ pub fn is_above_liquidation_threshold(
     price: i128,
 ) -> Result<bool, Error> {
     let threshold = get_liquidation_threshold(env)?;
-    let ratio = calculate_collateral_ratio(
-        position.collateral_amount,
-        position.minted_amount,
-        price,
-    )?;
+    let ratio =
+        calculate_collateral_ratio(position.collateral_amount, position.minted_amount, price)?;
 
     Ok(ratio <= threshold as i128)
 }

@@ -263,11 +263,7 @@ fn test_file_and_resolve_dispute() {
     let claimant = Address::generate(&env);
     let id = file_active_patent(&env, &client, &admin, &inventor);
 
-    let d_id = client.file_dispute(
-        &claimant,
-        &id,
-        &String::from_str(&env, "Prior art exists"),
-    );
+    let d_id = client.file_dispute(&claimant, &id, &String::from_str(&env, "Prior art exists"));
     assert_eq!(d_id, 1);
     assert_eq!(client.get_dispute(&d_id).status, DisputeStatus::Open);
 
@@ -285,11 +281,7 @@ fn test_resolve_dispute_twice_fails() {
     let inventor = Address::generate(&env);
     let claimant = Address::generate(&env);
     let id = file_active_patent(&env, &client, &admin, &inventor);
-    let d_id = client.file_dispute(
-        &claimant,
-        &id,
-        &String::from_str(&env, "Reason"),
-    );
+    let d_id = client.file_dispute(&claimant, &id, &String::from_str(&env, "Reason"));
     client.resolve_dispute(&admin, &d_id, &String::from_str(&env, "Resolved"));
     assert_eq!(
         client.try_resolve_dispute(&admin, &d_id, &String::from_str(&env, "Again")),
@@ -311,10 +303,7 @@ fn test_file_dispute_on_nonexistent_patent_fails() {
 fn test_pause_by_non_admin_fails() {
     let (env, _admin, client) = setup();
     let other = Address::generate(&env);
-    assert_eq!(
-        client.try_pause(&other),
-        Err(Ok(Error::Unauthorized))
-    );
+    assert_eq!(client.try_pause(&other), Err(Ok(Error::Unauthorized)));
 }
 
 #[test]
@@ -322,10 +311,7 @@ fn test_unpause_by_non_admin_fails() {
     let (env, admin, client) = setup();
     client.pause(&admin);
     let other = Address::generate(&env);
-    assert_eq!(
-        client.try_unpause(&other),
-        Err(Ok(Error::Unauthorized))
-    );
+    assert_eq!(client.try_unpause(&other), Err(Ok(Error::Unauthorized)));
 }
 
 #[test]
@@ -449,11 +435,7 @@ fn test_resolve_dispute_empty_resolution_fails() {
     let inventor = Address::generate(&env);
     let claimant = Address::generate(&env);
     let id = file_active_patent(&env, &client, &admin, &inventor);
-    let d_id = client.file_dispute(
-        &claimant,
-        &id,
-        &String::from_str(&env, "Prior art"),
-    );
+    let d_id = client.file_dispute(&claimant, &id, &String::from_str(&env, "Prior art"));
     assert_eq!(
         client.try_resolve_dispute(&admin, &d_id, &String::from_str(&env, "")),
         Err(Ok(Error::EmptyField))
@@ -466,11 +448,7 @@ fn test_resolve_dispute_by_non_admin_fails() {
     let inventor = Address::generate(&env);
     let claimant = Address::generate(&env);
     let id = file_active_patent(&env, &client, &admin, &inventor);
-    let d_id = client.file_dispute(
-        &claimant,
-        &id,
-        &String::from_str(&env, "Reason"),
-    );
+    let d_id = client.file_dispute(&claimant, &id, &String::from_str(&env, "Reason"));
     let other = Address::generate(&env);
     assert_eq!(
         client.try_resolve_dispute(&other, &d_id, &String::from_str(&env, "Resolved")),
@@ -520,11 +498,11 @@ fn test_getters_counts_and_paused() {
     let inventor = Address::generate(&env);
     let licensee = Address::generate(&env);
     let claimant = Address::generate(&env);
-    
+
     assert_eq!(client.get_patent_count(), 0);
     assert_eq!(client.get_license_count(), 0);
     assert_eq!(client.get_dispute_count(), 0);
-    
+
     let p_id = file_active_patent(&env, &client, &admin, &inventor);
     let _l_id = client.grant_license(
         &inventor,
@@ -535,7 +513,7 @@ fn test_getters_counts_and_paused() {
         &9999999999,
     );
     let _d_id = client.file_dispute(&claimant, &p_id, &String::from_str(&env, "Reason"));
-    
+
     assert_eq!(client.get_patent_count(), 1);
     assert_eq!(client.get_license_count(), 1);
     assert_eq!(client.get_dispute_count(), 1);
@@ -547,11 +525,11 @@ fn test_paused_blocks_all_state_changing_ops() {
     let inventor = Address::generate(&env);
     let licensee = Address::generate(&env);
     let claimant = Address::generate(&env);
-    
+
     let p_id = file_active_patent(&env, &client, &admin, &inventor);
-    
+
     client.pause(&admin);
-    
+
     // 1. file_patent
     assert_eq!(
         client.try_file_patent(
@@ -562,26 +540,26 @@ fn test_paused_blocks_all_state_changing_ops() {
         ),
         Err(Ok(Error::Paused))
     );
-    
+
     // 2. activate_patent
     assert_eq!(
         client.try_activate_patent(&admin, &p_id),
         Err(Ok(Error::Paused))
     );
-    
+
     // 3. revoke_patent
     assert_eq!(
         client.try_revoke_patent(&admin, &p_id),
         Err(Ok(Error::Paused))
     );
-    
+
     // 4. transfer_patent
     let other = Address::generate(&env);
     assert_eq!(
         client.try_transfer_patent(&inventor, &p_id, &other),
         Err(Ok(Error::Paused))
     );
-    
+
     // 5. grant_license
     assert_eq!(
         client.try_grant_license(
@@ -594,13 +572,13 @@ fn test_paused_blocks_all_state_changing_ops() {
         ),
         Err(Ok(Error::Paused))
     );
-    
+
     // 6. file_dispute
     assert_eq!(
         client.try_file_dispute(&claimant, &p_id, &String::from_str(&env, "Reason")),
         Err(Ok(Error::Paused))
     );
-    
+
     // 7. resolve_dispute
     assert_eq!(
         client.try_resolve_dispute(&admin, &1, &String::from_str(&env, "Resolution")),

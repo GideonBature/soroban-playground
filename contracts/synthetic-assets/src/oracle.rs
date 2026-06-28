@@ -51,7 +51,7 @@ pub fn update_price_internal(
 /// Get validated price
 pub fn get_price_internal(env: &Env, asset_symbol: &Symbol) -> Result<i128, Error> {
     let price_data = get_price(env, asset_symbol)?;
-    
+
     // Check if price is stale
     let current_time = env.ledger().timestamp();
     // Use checked_add to avoid overflow in timestamp arithmetic

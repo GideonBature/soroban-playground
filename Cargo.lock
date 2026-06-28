@@ -2724,6 +2724,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "soroban-dutch-auction-contract"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "soroban-env-common"
 version = "21.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
