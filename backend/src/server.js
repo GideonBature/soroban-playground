@@ -47,13 +47,17 @@ import featureFlagService from './services/featureFlagService.js';
 import { LedgerSyncService } from './services/ledgerSyncService.js';
 import snippetsRoute from './routes/snippets.js';
 import deployQueueRoute from './routes/deployQueue.js';
+import {
+  initializeQueues,
+  queueDashboard,
+  shutdownQueues,
+} from './services/queueService.js';
+import backgroundJobsRoute from './routes/backgroundJobs.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const server = http.createServer(app);
-applyServerTuning(server); // HTTP/2: keep-alive + headers-timeout tuning
 
 // TLS/SSL Hardening configuration
 const httpsOptions = {
@@ -99,6 +103,7 @@ try {
 const server = hasCertificates
   ? https.createServer(httpsOptions, app)
   : http.createServer(app);
+applyServerTuning(server); // HTTP/2: keep-alive + headers-timeout tuning
 const PORT = process.env.PORT || 5000;
 
 // Load package.json for version info
@@ -178,6 +183,10 @@ app.use('/api/batch', batchSubmitterRoute);
 app.use('/api/credentials', credentialsRoute);
 app.use('/api/snippets', snippetsRoute);
 app.use('/api/deploy-queue', deployQueueRoute);
+app.use('/api/background-jobs', backgroundJobsRoute);
+if (config.app.env === 'development') {
+  app.use('/admin/queues', queueDashboard);
+}
 app.use('/metrics', metricsRoute);
 
 // GraphQL Endpoint
@@ -318,6 +327,7 @@ initializeDatabase()
     featureFlagService.initSubscriber();
     startWebhookDispatcher();
     setupCredentialRotation();
+    initializeQueues();
     if (process.env.LEDGER_SYNC_ENABLED === 'true') {
       new LedgerSyncService({ db }).start();
     }
@@ -336,9 +346,19 @@ initializeDatabase()
   });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('Shutting down gracefully...');
-  server.close(() => process.exit(0));
-});
+const handleGracefulShutdown = (signal) => {
+  console.log(`Received ${signal}. Shutting down gracefully...`);
+  shutdownQueues()
+    .catch((err) => console.error('Error shutting down BullMQ:', err.message))
+    .finally(() => {
+      server.close(() => {
+        console.log('HTTP server closed. Exiting.');
+        process.exit(0);
+      });
+    });
+};
+
+process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));
 
 export default app;
