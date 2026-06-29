@@ -1,8 +1,8 @@
 [package]
-name = "token_contract"
+name = "soroban-twap-oracle"
 version = "0.1.0"
 edition = "2021"
-description = "SEP-41 compliant fungible token contract for Soroban"
+description = "Time-Weighted Average Price (TWAP) oracle providing manipulation-resistant price feeds"
 
 [lib]
 crate-type = ["cdylib"]
