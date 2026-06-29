@@ -36,4 +36,6 @@ members = [
     "contracts/twap-oracle",
     "contracts/parametric-insurance",
     "contracts/token_contract",
+    "contracts/did-registry",
+    "contracts/multisig-wallet",
 ]
