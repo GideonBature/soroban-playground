@@ -45,6 +45,8 @@ import feeEngineRoute from './routes/feeEngine.js';
 import featureFlagsRoute from './routes/featureFlags.js';
 import featureFlagService from './services/featureFlagService.js';
 import { LedgerSyncService } from './services/ledgerSyncService.js';
+import snippetsRoute from './routes/snippets.js';
+import deployQueueRoute from './routes/deployQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -174,6 +176,8 @@ app.use('/api/v1/events', eventsV1Route);
 app.use('/api/registry', serviceRegistryRoute);
 app.use('/api/batch', batchSubmitterRoute);
 app.use('/api/credentials', credentialsRoute);
+app.use('/api/snippets', snippetsRoute);
+app.use('/api/deploy-queue', deployQueueRoute);
 app.use('/metrics', metricsRoute);
 
 // GraphQL Endpoint
