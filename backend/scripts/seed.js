@@ -45,7 +45,7 @@ async function seedDatabase(options = {}) {
         faker.internet.userName(),
         faker.internet.email(),
         faker.internet.password(),
-        faker.helpers.arrayElement(['user', 'admin'])
+        faker.helpers.arrayElement(['developer', 'admin', 'guest'])
       );
 
       if (currentUserChunk.length === 50 || i === numUsers - 1) {

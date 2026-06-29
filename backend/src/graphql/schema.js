@@ -175,11 +175,29 @@ export const typeDefs = /* GraphQL */ `
     timestamp: String!
   }
 
+  type Project {
+    id: ID!
+    title: String!
+    description: String!
+    category: String!
+    status: String!
+    creator_id: Int!
+    creator_name: String!
+    funding_goal: Float!
+    current_funding: Float!
+    completion_rate: Float!
+    tags: [String!]
+  }
+
   # ── Complexity directive ──────────────────────────────────────────────────────
   directive @complexity(value: Int!, multipliers: [String!]) on FIELD_DEFINITION
 
   # ── Root types ────────────────────────────────────────────────────────────────
   type Query {
+    # Projects
+    projects: [Project!]! @complexity(value: 5)
+    project(id: ID!): Project @complexity(value: 3)
+
     # Compile
     compileStats: CompileStats! @complexity(value: 1)
     compileHistory: [CompileHistoryItem!]! @complexity(value: 3)
@@ -197,6 +215,28 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
+    # Projects
+    createProject(
+      title: String!
+      description: String!
+      category: String!
+      status: String!
+      funding_goal: Float!
+      tags: [String!]
+    ): Project! @complexity(value: 10)
+
+    updateProject(
+      id: ID!
+      title: String
+      description: String
+      category: String
+      status: String
+      funding_goal: Float
+      tags: [String!]
+    ): Project! @complexity(value: 10)
+
+    deleteProject(id: ID!): Boolean! @complexity(value: 10)
+
     # Mutations spawn real work (compile/deploy/invoke) so they carry a heavier
     # static weight than read fields.
     compile(input: CompileInput!): CompileResult! @complexity(value: 10)
