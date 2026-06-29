@@ -55,6 +55,7 @@ import GovernancePortal, {
 } from "@/components/GovernancePortal";
 import SupplyChainPanel, { type ProductData as SupplyChainProduct, type ProductStatus as SupplyChainStatus, type QualityResult as SupplyChainQuality } from "@/components/SupplyChainPanel";
 import LotteryDashboard from "@/components/LotteryDashboard";
+import ShareSnippet from "@/components/ShareSnippet";
 import { useWallet } from "@/components/providers/WalletProvider";
 import { useTransactionTracker } from "@/hooks/useTransactionTracker";
 import {
@@ -2201,6 +2202,7 @@ export default function Home() {
                       <BookOpen size={14} />
                       Soroban Docs
                     </a>
+                    <ShareSnippet code={code} apiBaseUrl={DEFAULT_API_BASE_URL} />
                   </div>
                 </div>
                 <Editor code={code} setCode={setCode} />
