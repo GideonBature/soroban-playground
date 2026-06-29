@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import MobileEditor from "@/components/MobileEditor";
+import { preloadMonacoEditor } from "@/lib/editorLoadScheduler";
 
 const Editor = dynamic(() => import("@/components/Editor"), {
   ssr: false,
@@ -253,6 +254,10 @@ function createMockInvocationPayload(
 }
 
 export default function Home() {
+  useEffect(() => {
+    return preloadMonacoEditor();
+  }, []);
+
   const [code, setCode] = useState(DEFAULT_CODE);
   const [logs, setLogs] = useState<string[]>([
     `Soroban Playground ready.`,
