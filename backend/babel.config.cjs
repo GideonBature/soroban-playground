@@ -12,12 +12,22 @@ function requireFromBackendFirst(packageName) {
   }
 }
 
+function resolveBabelModule(name) {
+  return require.resolve(name, { paths: [__dirname, localModules] });
+}
+
 module.exports = {
   presets: [
+<<<<<<< HEAD
     [
       requireFromBackendFirst('@babel/preset-env'),
       { targets: { node: 'current' } },
     ],
   ],
   plugins: [requireFromBackendFirst('babel-plugin-transform-import-meta')],
+=======
+    [resolveBabelModule('@babel/preset-env'), { targets: { node: 'current' } }],
+  ],
+  plugins: [resolveBabelModule('babel-plugin-transform-import-meta')],
+>>>>>>> origin/main
 };

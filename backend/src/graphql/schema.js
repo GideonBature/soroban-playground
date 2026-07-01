@@ -224,8 +224,16 @@ export const typeDefs = /* GraphQL */ `
   # ── Complexity directive ──────────────────────────────────────────────────────
   directive @complexity(value: Int!, multipliers: [String!]) on FIELD_DEFINITION
 
+  # ── Authorization directives ────────────────────────────────────────────────
+  directive @auth(requires: [String!]) on FIELD_DEFINITION | FIELD | OBJECT | QUERY | MUTATION | SUBSCRIPTION
+  directive @hasRole(role: String!) on FIELD_DEFINITION | FIELD | OBJECT | QUERY | MUTATION | SUBSCRIPTION
+
   # ── Root types ────────────────────────────────────────────────────────────────
   type Query {
+    # Projects
+    projects: [Project!]! @complexity(value: 5)
+    project(id: ID!): Project @complexity(value: 3)
+
     # Compile
     compileStats: CompileStats! @complexity(value: 1)
     compileHistory: [CompileHistoryItem!]! @complexity(value: 3)
@@ -237,6 +245,8 @@ export const typeDefs = /* GraphQL */ `
     # Invoke — admin only
     invokeLog(contractId: String!, first: Int, after: String): JSON
       @complexity(value: 5)
+      @auth(requires: ["authenticated"])
+      @hasRole(role: "admin")
 
     # Projects / Files / Templates (issue #724)
     projects: [Project!]! @complexity(value: 3)
@@ -250,13 +260,38 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
+    # Projects
+    createProject(
+      title: String!
+      description: String!
+      category: String!
+      status: String!
+      funding_goal: Float!
+      tags: [String!]
+    ): Project! @complexity(value: 10)
+
+    updateProject(
+      id: ID!
+      title: String
+      description: String
+      category: String
+      status: String
+      funding_goal: Float
+      tags: [String!]
+    ): Project! @complexity(value: 10)
+
+    deleteProject(id: ID!): Boolean! @complexity(value: 10)
+
     # Mutations spawn real work (compile/deploy/invoke) so they carry a heavier
     # static weight than read fields.
     compile(input: CompileInput!): CompileResult! @complexity(value: 10)
     compileBatch(contracts: [BatchContractInput!]!): BatchCompileResult!
       @complexity(value: 20)
+      @auth(requires: ["authenticated"])
     deploy(input: DeployInput!): DeployResult! @complexity(value: 10)
+      @auth(requires: ["authenticated"])
     invoke(input: InvokeInput!): InvokeResult! @complexity(value: 10)
+      @auth(requires: ["authenticated"])
   }
 
   type Subscription {
