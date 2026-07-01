@@ -46,6 +46,10 @@ import applySecurityHeaders from './middleware/securityHeaders.js';
 import feeEngineRoute from './routes/feeEngine.js';
 import featureFlagsRoute from './routes/featureFlags.js';
 import featureFlagService from './services/featureFlagService.js';
+import { startMemoryLeakDetector } from './services/memoryLeakDetector.js';
+import { contractEventIndexer } from './services/contractEventIndexer.js';
+import { runStartupMigrations } from './services/migrationService.js';
+import healthService from './services/healthService.js';
 import { LedgerSyncService } from './services/ledgerSyncService.js';
 import snippetsRoute from './routes/snippets.js';
 import deployQueueRoute from './routes/deployQueue.js';
@@ -250,38 +254,64 @@ function getRuntimeInfo() {
   };
 }
 
-// ─── Health Check Endpoint ────────────────────────────────────────────────────
-app.get('/', (_req, res) => {
-  res.status(200).send('Soroban Playground Backend API is running.');
-});
+// ─── Health Check Endpoints ───────────────────────────────────────────────────
 
-app.get('/api/health', (_req, res) => {
+function buildSystemMetrics() {
+  const memory = getMemoryInfo();
+  return {
+    version: packageJson.version ?? 'unknown',
+    service: packageJson.name ?? 'soroban-playground-backend',
+    cpu: getCpuUsage(),
+    memory,
+    runtime: getRuntimeInfo(),
+    memoryDegraded: memory.usedPercent > 95,
+  };
+}
+
+async function handleLivenessCheck(_req, res) {
+  const payload = healthService.getLivenessPayload();
+  return res.status(200).json({ success: true, data: payload });
+}
+
+async function handleDeepHealthCheck(req, res) {
   try {
-    const memory = getMemoryInfo();
-    const status = memory.usedPercent > 95 ? 'degraded' : 'ok';
+    const skipCache = req.query?.refresh === 'true';
+    const deep = await healthService.performDeepHealthCheck({ skipCache });
+    const metrics = buildSystemMetrics();
+    let status = deep.status;
+    if (metrics.memoryDegraded && status === 'ok') status = 'degraded';
+
     const payload = {
+      ...deep,
       status,
-      version: packageJson.version ?? 'unknown',
-      service: packageJson.name ?? 'soroban-playground-backend',
-      timestamp: new Date().toISOString(),
-      uptime: getUptimeInfo(),
-      cpu: getCpuUsage(),
-      memory,
-      runtime: getRuntimeInfo(),
+      ...metrics,
     };
-    return res.status(200).json({ success: true, data: payload });
+    delete payload.memoryDegraded;
+
+    const httpStatus = healthService.getHttpStatusForHealth(status);
+    return res
+      .status(httpStatus)
+      .json({ success: httpStatus < 500, data: payload });
   } catch (err) {
-    return res.status(500).json({
+    return res.status(503).json({
       success: false,
       data: {
-        status: 'error',
+        status: 'unhealthy',
         version: packageJson.version ?? 'unknown',
         timestamp: new Date().toISOString(),
         error: err.message,
       },
     });
   }
+}
+
+app.get('/', (_req, res) => {
+  res.status(200).send('Soroban Playground Backend API is running.');
 });
+
+app.get('/health/live', handleLivenessCheck);
+app.get('/health', handleDeepHealthCheck);
+app.get('/api/health', handleDeepHealthCheck);
 
 // Error handlers (must be after routes)
 app.use(notFoundHandler);
