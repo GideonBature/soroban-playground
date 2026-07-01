@@ -45,13 +45,13 @@ import featureFlagsRoute from './routes/featureFlags.js';
 import featureFlagService from './services/featureFlagService.js';
 import { LedgerSyncService } from './services/ledgerSyncService.js';
 import healthRouter, { healthHandler } from './routes/health.js';
+import snippetsRoute from './routes/snippets.js';
+import deployQueueRoute from './routes/deployQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const server = http.createServer(app);
-applyServerTuning(server); // HTTP/2: keep-alive + headers-timeout tuning
 
 // TLS/SSL Hardening configuration
 const httpsOptions = {
@@ -97,6 +97,7 @@ try {
 const server = hasCertificates
   ? https.createServer(httpsOptions, app)
   : http.createServer(app);
+applyServerTuning(server); // HTTP/2: keep-alive + headers-timeout tuning
 const PORT = process.env.PORT || 5000;
 
 // Basic middleware
@@ -158,6 +159,8 @@ app.use('/api/v1/events', eventsV1Route);
 app.use('/api/registry', serviceRegistryRoute);
 app.use('/api/batch', batchSubmitterRoute);
 app.use('/api/credentials', credentialsRoute);
+app.use('/api/snippets', snippetsRoute);
+app.use('/api/deploy-queue', deployQueueRoute);
 app.use('/metrics', metricsRoute);
 
 // GraphQL Endpoint

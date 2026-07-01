@@ -1,8 +1,8 @@
 [package]
-name = "token_contract"
+name = "soroban-parametric-insurance"
 version = "0.1.0"
 edition = "2021"
-description = "SEP-41 compliant fungible token contract for Soroban"
+description = "Parametric insurance payout contract — automates claims based on oracle-reported trigger conditions"
 
 [lib]
 crate-type = ["cdylib"]
