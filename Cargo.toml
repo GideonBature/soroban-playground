@@ -40,4 +40,5 @@ members = [
     "contracts/subscription-manager",
     "contracts/did-registry",
     "contracts/multisig-wallet",
+    "contracts/yield-optimizer",
 ]
