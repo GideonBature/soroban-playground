@@ -42,6 +42,7 @@ import {
   closeDatabase,
 } from './database/connection.js';
 import { compressionMiddleware } from './middleware/compressionMiddleware.js';
+import applySecurityHeaders from './middleware/securityHeaders.js';
 import feeEngineRoute from './routes/feeEngine.js';
 import featureFlagsRoute from './routes/featureFlags.js';
 import featureFlagService from './services/featureFlagService.js';
@@ -125,6 +126,7 @@ try {
 }
 
 // Basic middleware
+applySecurityHeaders(app);
 app.use(morgan('combined'));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
