@@ -8,7 +8,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest --no-coverage",
+    "test": "node ../node_modules/jest/bin/jest.js --runInBand",
     "test:hooks": "jest src/__tests__/hooks --no-coverage"
   },
   "dependencies": {
@@ -25,6 +25,7 @@
     "graphql": "^16.13.2",
     "graphql-tag": "^2.12.6",
     "lucide-react": "^1.17.0",
+    "monaco-editor": "^0.55.1",
     "monaco-languageclient": "^10.7.0",
     "next": "16.2.6",
     "optimism": "^0.18.1",

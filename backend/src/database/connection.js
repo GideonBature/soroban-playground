@@ -8,13 +8,6 @@ const __dirname = path.dirname(__filename);
 
 let db = null;
 
-function stripSeedData(schema) {
-  return schema.replace(
-    /-- Sample data for testing[\s\S]*?;\n\n-- DAO Treasury Tables/,
-    '-- Sample data for testing skipped\n\n-- DAO Treasury Tables'
-  );
-}
-
 function enhanceDatabaseError(error, context) {
   const detail = context ? ` (${context})` : '';
   const enhanced = new Error(
@@ -106,23 +99,12 @@ async function openDatabase(options = {}) {
     };
   });
   const { withCacheBusting } = await import('./cacheInterceptor.js');
-  const wrappedHandle = withCacheBusting(handle);
+  const { wrapPreparedDatabase } = await import('./safeQuery.js');
+  const wrappedHandle = wrapPreparedDatabase(withCacheBusting(handle));
 
-  const fs = await import('fs/promises');
-  const rawSchema = await fs.readFile(schemaPath, 'utf-8').catch((error) => {
-    throw enhanceDatabaseError(error, `failed to read schema at ${schemaPath}`);
-  });
+  // Schema execution moved to knex migrations
 
-  const schema = seedSampleData ? rawSchema : stripSeedData(rawSchema);
-
-  await handle.exec(schema).catch((error) => {
-    throw enhanceDatabaseError(
-      error,
-      `failed to apply schema at ${schemaPath}`
-    );
-  });
-
-  return handle;
+  return wrappedHandle;
 }
 
 export async function initializeDatabase(options = {}) {
