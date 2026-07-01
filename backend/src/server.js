@@ -53,6 +53,7 @@ import healthService from './services/healthService.js';
 import { LedgerSyncService } from './services/ledgerSyncService.js';
 import snippetsRoute from './routes/snippets.js';
 import deployQueueRoute from './routes/deployQueue.js';
+import predictionMarketRoute from './routes/predictionMarket.js';
 import { startWebhookDispatcher, stopWebhookDispatcher } from './services/webhookDispatcher.js';
 import { webhooksRoute } from './routes/webhooks.js';
 import corsAdminRoute from './routes/corsAdmin.js';
@@ -194,6 +195,7 @@ app.use('/api/batch', batchSubmitterRoute);
 app.use('/api/credentials', credentialsRoute);
 app.use('/api/snippets', snippetsRoute);
 app.use('/api/deploy-queue', deployQueueRoute);
+app.use('/api/prediction-market', predictionMarketRoute);
 app.use('/metrics', metricsRoute);
 
 // GraphQL Endpoint
