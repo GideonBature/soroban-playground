@@ -1,39 +1,28 @@
 import express from 'express';
-
 import { asyncHandler } from '../middleware/errorHandler.js';
-import {
-  buildHealthPayload,
-  buildHealthErrorPayload,
-  buildLivenessPayload,
-  buildReadinessPayload,
-} from '../services/healthService.js';
+import healthService from '../services/healthService.js';
 
 const router = express.Router();
 
-export const healthHandler = asyncHandler(async (_req, res) => {
+export const healthHandler = asyncHandler(async (req, res) => {
   try {
-    const payload = await buildHealthPayload();
-    return res.status(200).json({ success: true, data: payload });
+    const skipCache = req.query?.refresh === 'true';
+    const deep = await healthService.performDeepHealthCheck({ skipCache });
+    const httpStatus = healthService.getHttpStatusForHealth(deep.status);
+    return res.status(httpStatus).json({ success: httpStatus < 500, data: deep });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(503).json({
       success: false,
-      data: buildHealthErrorPayload(error),
+      data: { status: 'unhealthy', error: error.message },
     });
   }
 });
 
 export const livenessHandler = asyncHandler(async (_req, res) => {
-  return res.status(200).json({ success: true, data: buildLivenessPayload() });
-});
-
-export const readinessHandler = asyncHandler(async (_req, res) => {
-  const payload = await buildReadinessPayload();
-  const statusCode = payload.status === 'ready' ? 200 : 503;
-  return res.status(statusCode).json({ success: statusCode === 200, data: payload });
+  return res.status(200).json({ success: true, data: healthService.getLivenessPayload() });
 });
 
 router.get('/', healthHandler);
 router.get('/live', livenessHandler);
-router.get('/ready', readinessHandler);
 
 export default router;
